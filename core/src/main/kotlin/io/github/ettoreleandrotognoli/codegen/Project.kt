@@ -1,6 +1,6 @@
-package io.gitlab.ettoreleandrotognoli.codegen
+package io.github.ettoreleandrotognoli.codegen
 
-import io.gitlab.ettoreleandrotognoli.codegen.data.DataClass
+import io.github.ettoreleandrotognoli.codegen.data.DataClass
 import java.io.File
 
 @DataClass

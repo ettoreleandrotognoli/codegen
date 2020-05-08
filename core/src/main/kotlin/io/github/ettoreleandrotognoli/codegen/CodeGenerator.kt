@@ -1,4 +1,4 @@
-package io.gitlab.ettoreleandrotognoli.codegen
+package io.github.ettoreleandrotognoli.codegen
 
 interface CodeGenerator<T : CodeSpec> {
 

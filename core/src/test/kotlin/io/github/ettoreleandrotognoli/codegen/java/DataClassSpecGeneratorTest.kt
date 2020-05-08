@@ -1,9 +1,9 @@
-package io.gitlab.ettoreleandrotognoli.codegen.java
+package io.github.ettoreleandrotognoli.codegen.java
 
 import com.charleskorn.kaml.Yaml
-import io.gitlab.ettoreleandrotognoli.codegen.Project
-import io.gitlab.ettoreleandrotognoli.codegen.data.DataClassSpec
-import io.gitlab.ettoreleandrotognoli.codegen.data.Property
+import io.github.ettoreleandrotognoli.codegen.Project
+import io.github.ettoreleandrotognoli.codegen.data.DataClassSpec
+import io.github.ettoreleandrotognoli.codegen.data.Property
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File

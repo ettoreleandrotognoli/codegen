@@ -1,7 +1,7 @@
-package io.gitlab.ettoreleandrotognoli.codegen.java
+package io.github.ettoreleandrotognoli.codegen.java
 
-import io.gitlab.ettoreleandrotognoli.codegen.CodeGenerator
-import io.gitlab.ettoreleandrotognoli.codegen.CodeSpec
+import io.github.ettoreleandrotognoli.codegen.CodeGenerator
+import io.github.ettoreleandrotognoli.codegen.CodeSpec
 import kotlin.reflect.KClass
 
 abstract class JavaCodeGenerator<T : CodeSpec>(

@@ -1,4 +1,4 @@
-package io.gitlab.ettoreleandrotognoli.codegen.plugin;
+package io.github.ettoreleandrotognoli.codegen.plugin;
 
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;

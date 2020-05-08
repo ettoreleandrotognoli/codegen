@@ -1,8 +1,8 @@
-package io.gitlab.ettoreleandrotognoli.codegen.java
+package io.github.ettoreleandrotognoli.codegen.java
 
 import com.squareup.javapoet.*
-import io.gitlab.ettoreleandrotognoli.codegen.Project
-import io.gitlab.ettoreleandrotognoli.codegen.data.DataClassSpec
+import io.github.ettoreleandrotognoli.codegen.Project
+import io.github.ettoreleandrotognoli.codegen.data.DataClassSpec
 import javax.lang.model.element.Modifier
 
 class DataClassGenerator : JavaCodeGenerator<DataClassSpec>(DataClassSpec::class) {

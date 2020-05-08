@@ -1,4 +1,4 @@
-package io.gitlab.ettoreleandrotognoli.codegen.data
+package io.github.ettoreleandrotognoli.codegen.data
 
 import kotlinx.serialization.Serializable
 

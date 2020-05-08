@@ -1,6 +1,6 @@
-package io.gitlab.ettoreleandrotognoli.codegen.data
+package io.github.ettoreleandrotognoli.codegen.data
 
-import io.gitlab.ettoreleandrotognoli.codegen.CodeSpec
+import io.github.ettoreleandrotognoli.codegen.CodeSpec
 import kotlinx.serialization.Serializable
 import java.util.*
 
