@@ -1,0 +1,5 @@
+name: "Name"
+packageName: "io.gitlab.ettoreleandrotognoli.example"
+properties:
+  - name: "value"
+    type: "String"
