@@ -56,7 +56,7 @@ class DataClassGenerator : JavaCodeGenerator<DataClassSpec>(DataClassSpec::class
     }
 
     fun makeField(propertyName: String, type: TypeName): FieldSpec {
-        return FieldSpec.builder(type, propertyName, Modifier.FINAL, Modifier.PRIVATE)
+        return FieldSpec.builder(type, propertyName, Modifier.PRIVATE)
                 .build()
     }
 
@@ -68,7 +68,7 @@ class DataClassGenerator : JavaCodeGenerator<DataClassSpec>(DataClassSpec::class
                 .addParameter(parameter)
                 .returns(returnType)
         properties.forEach {
-            methodSpecBuilder.addCode("this.$1N = $2N.get${upperFirst(it)}();\n", it, "other")
+            methodSpecBuilder.addCode("this.$1N = $2N.get${upperFirst(it)}();\n", it, "source")
         }
         return methodSpecBuilder.addCode("return this;")
                 .build()
