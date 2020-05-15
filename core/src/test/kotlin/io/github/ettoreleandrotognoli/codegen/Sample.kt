@@ -16,7 +16,7 @@ class Sample {
 
     class DataClass {
         companion object {
-            val EXAMPLE_NAME = DataClassSpec("Name", "io.gitlab.ettoreleandrotognoli.example", listOf(Property(name = "value", type = "String")), observable = false)
+            val EXAMPLE_NAME = DataClassSpec("Name", "io.gitlab.ettoreleandrotognoli.example", listOf(Property(name = "value", type = "String")))
         }
     }
 

@@ -4,6 +4,7 @@ import com.squareup.javapoet.*
 import io.github.ettoreleandrotognoli.codegen.api.Context
 import io.github.ettoreleandrotognoli.codegen.core.AbstractCodeGenerator
 import io.github.ettoreleandrotognoli.codegen.data.DataClassSpec
+import io.github.ettoreleandrotognoli.codegen.data.ObservableSpec
 import org.springframework.stereotype.Component
 import java.beans.PropertyChangeListener
 import java.beans.PropertyChangeSupport
@@ -132,13 +133,18 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
     }
 
 
-    fun observableExtension(codeSpec: DataClassSpec, mainInterfaceBuilder: TypeSpec.Builder) {
+    fun observableExtension(codeSpec: DataClassSpec, observableSpec: ObservableSpec, mainInterfaceBuilder: TypeSpec.Builder) {
         val mutable = ClassName.get(codeSpec.packageName, codeSpec.name + ".Mutable")
         val observableClassBuilder = TypeSpec.classBuilder("Observable")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                 .addSuperinterface(mutable)
                 .addField(FieldSpec.builder(mutable, "origin").addModifiers(Modifier.PRIVATE, Modifier.FINAL).build())
                 .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC).addParameter(mutable, "origin").addCode("this.$1N = $1N;", "origin").build())
+
+        observableClassBuilder.superclass(asType(observableSpec.extends))
+        observableSpec.implements.forEach {
+            observableClassBuilder.addSuperinterface(asType(it))
+        }
 
         observableClassBuilder.addField(FieldSpec.builder(PropertyChangeSupport::class.java, "propertyChangeSupport").addModifiers(Modifier.FINAL, Modifier.PRIVATE).initializer("new PropertyChangeSupport(this)").build())
 
@@ -147,10 +153,22 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 .addParameter(PropertyChangeListener::class.java, "listener")
                 .addCode("this.\$L.\$L(\$L);", "propertyChangeSupport", "addPropertyChangeListener", "listener")
                 .build())
+        observableClassBuilder.addMethod(MethodSpec.methodBuilder("addPropertyChangeListener")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addParameter(String::class.java, "propertyName")
+                .addParameter(PropertyChangeListener::class.java, "listener")
+                .addCode("this.\$L.\$L(\$L, \$L);", "propertyChangeSupport", "addPropertyChangeListener", "propertyName", "listener")
+                .build())
         observableClassBuilder.addMethod(MethodSpec.methodBuilder("removePropertyChangeListener")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addParameter(PropertyChangeListener::class.java, "listener")
                 .addCode("this.\$L.\$L(\$L);", "propertyChangeSupport", "removePropertyChangeListener", "listener")
+                .build())
+        observableClassBuilder.addMethod(MethodSpec.methodBuilder("removePropertyChangeListener")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addParameter(String::class.java, "propertyName")
+                .addParameter(PropertyChangeListener::class.java, "listener")
+                .addCode("this.\$L.\$L(\$L, \$L);", "propertyChangeSupport", "removePropertyChangeListener", "propertyName", "listener")
                 .build())
 
         codeSpec.properties
@@ -218,8 +236,8 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
 
         codeSpec.properties.forEach { mainInterfaceBuilder.addMethod(makeAsbtractGetMethod(it.name, asType(it.type))) }
 
-        if (codeSpec.observable) {
-            observableExtension(codeSpec, mainInterfaceBuilder)
+        if (codeSpec.observable != null) {
+            observableExtension(codeSpec, codeSpec.observable, mainInterfaceBuilder)
         }
 
         val javaFile = JavaFile.builder(codeSpec.packageName, mainInterfaceBuilder.build())
