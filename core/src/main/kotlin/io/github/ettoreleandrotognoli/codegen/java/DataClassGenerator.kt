@@ -145,12 +145,12 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         observableClassBuilder.addMethod(MethodSpec.methodBuilder("addPropertyChangeListener")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addParameter(PropertyChangeListener::class.java, "listener")
-                .addCode("this.\$L.\$L(\$L)", "propertyChangeSupport", "addPropertyChangeListener", "listener")
+                .addCode("this.\$L.\$L(\$L);", "propertyChangeSupport", "addPropertyChangeListener", "listener")
                 .build())
         observableClassBuilder.addMethod(MethodSpec.methodBuilder("removePropertyChangeListener")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addParameter(PropertyChangeListener::class.java, "listener")
-                .addCode("this.\$L.\$L(\$L)", "propertyChangeSupport", "removePropertyChangeListener", "listener")
+                .addCode("this.\$L.\$L(\$L);", "propertyChangeSupport", "removePropertyChangeListener", "listener")
                 .build())
 
         codeSpec.properties
