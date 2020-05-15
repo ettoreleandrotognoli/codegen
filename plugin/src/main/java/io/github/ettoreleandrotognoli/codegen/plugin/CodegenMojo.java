@@ -20,8 +20,11 @@ public class CodegenMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project.build.directory}/generated-sources/codegen", required = true, readonly = true)
     File outputDirectory;
 
+    @Parameter(defaultValue = "${project.baseDir}/src/main/codegen/main.yml")
+    File[] codegenFiles;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-
+        
     }
 }

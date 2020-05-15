@@ -1,9 +1,7 @@
-package io.github.ettoreleandrotognoli.codegen
+package io.github.ettoreleandrotognoli.codegen.api
 
-import io.github.ettoreleandrotognoli.codegen.data.DataClass
 import java.io.File
 
-@DataClass
 interface Project {
 
     val basePath: File

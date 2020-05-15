@@ -1,11 +1,14 @@
 package io.github.ettoreleandrotognoli.codegen.java
 
 import com.squareup.javapoet.*
-import io.github.ettoreleandrotognoli.codegen.Project
+import io.github.ettoreleandrotognoli.codegen.api.Context
+import io.github.ettoreleandrotognoli.codegen.core.AbstractCodeGenerator
 import io.github.ettoreleandrotognoli.codegen.data.DataClassSpec
+import org.springframework.stereotype.Component
 import javax.lang.model.element.Modifier
 
-class DataClassGenerator : JavaCodeGenerator<DataClassSpec>(DataClassSpec::class) {
+@Component
+class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::class) {
 
 
     fun asType(className: String): ClassName {
@@ -106,7 +109,7 @@ class DataClassGenerator : JavaCodeGenerator<DataClassSpec>(DataClassSpec::class
     }
 
 
-    override fun generate(project: Project, codeSpec: DataClassSpec) {
+    override fun generate(context: Context, codeSpec: DataClassSpec) {
         val mainInterfaceClassName = ClassName.get(codeSpec.packageName, codeSpec.name)
         val mutableInterfaceClassName = ClassName.get(codeSpec.packageName, codeSpec.name + ".Mutable")
         val dtoClassName = ClassName.get(codeSpec.packageName, codeSpec.name + ".DTO")
@@ -145,6 +148,6 @@ class DataClassGenerator : JavaCodeGenerator<DataClassSpec>(DataClassSpec::class
 
         val javaFile = JavaFile.builder(codeSpec.packageName, mainInterfaceBuilder.build())
                 .build()
-        javaFile.writeTo(project.generatedSourcePath)
+        javaFile.writeTo(context.project.generatedSourcePath)
     }
 }

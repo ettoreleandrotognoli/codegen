@@ -1,5 +1,7 @@
 name: "Name"
 packageName: "io.gitlab.ettoreleandrotognoli.example"
+codegen:
+  - "DataClass"
 properties:
   - name: "value"
     type: "String"
