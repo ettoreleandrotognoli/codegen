@@ -1,5 +1,5 @@
 name: "Name"
-packageName: "io.github.ettoreleandrotognoli.example"
+packageName: "com.github.ettoreleandrotognoli.example"
 codegen:
   - "DataClass"
 properties:

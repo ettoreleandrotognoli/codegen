@@ -4,7 +4,7 @@
 
     <parent>
         <artifactId>codegen</artifactId>
-        <groupId>io.github.ettoreleandrotognoli</groupId>
+        <groupId>com.github.ettoreleandrotognoli</groupId>
         <version>0.0.1-RC1</version>
     </parent>
 
