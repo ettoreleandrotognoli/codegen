@@ -17,7 +17,9 @@ interface Project {
         }
 
     class DTO(
-            override val basePath: File
+            override var basePath: File,
+            override var targetPath: File,
+            override var generatedSourcePath: File
     ) : Project
 
 }

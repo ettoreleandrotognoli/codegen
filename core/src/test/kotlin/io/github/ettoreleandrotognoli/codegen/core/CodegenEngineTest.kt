@@ -22,6 +22,5 @@ class CodegenEngineTest {
     fun `getInstance`() {
         CodegenEngine
                 .getInstance()
-                .process(Project.DTO(File("/home/ettore/Code/codegen")), listOf(javaClass.classLoader.getResourceAsStream("main.yml")).stream())
     }
 }
