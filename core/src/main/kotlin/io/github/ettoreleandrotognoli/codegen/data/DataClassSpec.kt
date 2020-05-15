@@ -9,7 +9,9 @@ data class DataClassSpec(
         val name: String,
         val packageName: String,
         val properties: List<Property> = Collections.emptyList(),
-        val observable: Boolean = false
+        val observable: Boolean = false,
+        val extends: String = "Object",
+        val implements: List<String> = Collections.emptyList()
 ) : CodeSpec {
 
 

@@ -196,6 +196,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         codeSpec.properties.forEach { dtoClassBuilder.addMethod(makeSimpleConcreteSetMethod(it.name, asType(it.type))) }
         dtoClassBuilder.addMethod(makeCopyMethod(dtoClassName, mainInterfaceClassName, codeSpec.properties.map { it.name }))
         dtoClassBuilder.addMethod(makeCloneMethod(dtoClassName, dtoClassName))
+        dtoClassBuilder.superclass(asType(codeSpec.extends))
 
         val builderClassBuilder = TypeSpec.classBuilder("Builder")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
@@ -210,6 +211,10 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                         .addType(mutableInterfaceBuilder.build())
                         .addType(dtoClassBuilder.build())
                         .addType(builderClassBuilder.build())
+
+        codeSpec.implements.forEach {
+            mainInterfaceBuilder.addSuperinterface(asType(it))
+        }
 
         codeSpec.properties.forEach { mainInterfaceBuilder.addMethod(makeAsbtractGetMethod(it.name, asType(it.type))) }
 
