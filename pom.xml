@@ -23,6 +23,30 @@
         <maven-plugin-annotations.version>3.6.0</maven-plugin-annotations.version>
     </properties>
 
+    <name>godegen</name>
+    <description>Exploring code generation</description>
+    <url>https://github.com/ettoreleandrotognoli/codegen</url>
+
+    <licenses>
+        <license>
+            <name>GNU General Public License version 3</name>
+            <url>https://opensource.org/licenses/GPL-3.0</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Ettore Leandro Tognoli</name>
+            <email>ettore.leandro.tognoli@gmail.com</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/ettoreleandrotognoli/codegen.git</connection>
+        <developerConnection>scm:git:ssh://github.com:ettoreleandrotognoli/codegen.git</developerConnection>
+        <url>https://github.com/ettoreleandrotognoli/codegen/tree/master</url>
+    </scm>
+
     <modules>
         <module>core</module>
         <module>plugin</module>
