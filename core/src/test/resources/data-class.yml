@@ -5,3 +5,4 @@ codegen:
 properties:
   - name: "value"
     type: "String"
+obsevable: true

@@ -8,7 +8,8 @@ import java.util.*
 data class DataClassSpec(
         val name: String,
         val packageName: String,
-        val properties: List<Property> = Collections.emptyList()
+        val properties: List<Property> = Collections.emptyList(),
+        val observable: Boolean = false
 ) : CodeSpec {
 
 

@@ -5,11 +5,16 @@ import io.github.ettoreleandrotognoli.codegen.api.Context
 import io.github.ettoreleandrotognoli.codegen.core.AbstractCodeGenerator
 import io.github.ettoreleandrotognoli.codegen.data.DataClassSpec
 import org.springframework.stereotype.Component
+import java.beans.PropertyChangeListener
+import java.beans.PropertyChangeSupport
+import java.util.regex.Pattern
 import javax.lang.model.element.Modifier
 
 @Component
 class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::class) {
 
+
+    val camelCaseRegex = Pattern.compile("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])")
 
     fun asType(className: String): ClassName {
         return ClassName.bestGuess(className)
@@ -17,6 +22,12 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
 
     fun upperFirst(string: String): String {
         return string[0].toUpperCase() + string.substring(1)
+    }
+
+    fun asConstName(string: String): String {
+        return camelCaseRegex.split(string)
+                .map { it.toUpperCase() }
+                .joinToString(separator = "_")
     }
 
     fun makeAbstractSetMethod(propertyName: String, type: TypeName): MethodSpec {
@@ -29,16 +40,22 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
 
     }
 
-    fun makeConcreteSetMethod(propertyName: String, type: TypeName): MethodSpec {
+    fun makeSimpleConcreteSetMethod(propertyName: String, type: TypeName): MethodSpec {
+        val parameter = ParameterSpec.builder(type, propertyName).build()
+        return buildConcreteSetMethod(propertyName, type)
+                .addCode("this.$1L = $1L;", propertyName)
+                .build()
+    }
+
+    fun buildConcreteSetMethod(propertyName: String, type: TypeName): MethodSpec.Builder {
         val parameter = ParameterSpec.builder(type, propertyName).build()
         return MethodSpec
                 .methodBuilder("set${upperFirst(propertyName)}")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override::class.java)
                 .addParameter(parameter)
-                .addCode("this.$1L = $1L;", propertyName)
-                .build()
     }
+
 
     fun makeAsbtractGetMethod(propertyName: String, type: TypeName): MethodSpec {
         return MethodSpec
@@ -48,12 +65,17 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 .build()
     }
 
-    fun makeConcreteGetMethod(propertyName: String, type: TypeName): MethodSpec {
+    fun buildConcreteGetMethod(propertyName: String, type: TypeName): MethodSpec.Builder {
         return MethodSpec
                 .methodBuilder("get${upperFirst(propertyName)}")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override::class.java)
                 .returns(type)
+    }
+
+
+    fun makeSimpleConcreteGetMethod(propertyName: String, type: TypeName): MethodSpec {
+        return buildConcreteGetMethod(propertyName, type)
                 .addCode("return this.$1L;", propertyName)
                 .build()
     }
@@ -109,6 +131,50 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
     }
 
 
+    fun observableExtension(codeSpec: DataClassSpec, mainInterfaceBuilder: TypeSpec.Builder) {
+        val mutable = ClassName.get(codeSpec.packageName, codeSpec.name + ".Mutable")
+        val observableClassBuilder = TypeSpec.classBuilder("Observable")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addSuperinterface(mutable)
+                .addField(FieldSpec.builder(mutable, "origin").addModifiers(Modifier.PRIVATE, Modifier.FINAL).build())
+                .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC).addParameter(mutable, "origin").addCode("this.$1N = $1N;", "origin").build())
+
+        observableClassBuilder.addField(FieldSpec.builder(PropertyChangeSupport::class.java, "propertyChangeSupport").addModifiers(Modifier.FINAL, Modifier.PRIVATE).initializer("new PropertyChangeSupport(this)").build())
+
+        observableClassBuilder.addMethod(MethodSpec.methodBuilder("addPropertyChangeListener")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addParameter(PropertyChangeListener::class.java, "listener")
+                .addCode("this.\$L.\$L(\$L)", "propertyChangeSupport", "addPropertyChangeListener", "listener")
+                .build())
+        observableClassBuilder.addMethod(MethodSpec.methodBuilder("removePropertyChangeListener")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addParameter(PropertyChangeListener::class.java, "listener")
+                .addCode("this.\$L.\$L(\$L)", "propertyChangeSupport", "removePropertyChangeListener", "listener")
+                .build())
+
+        codeSpec.properties
+                .map { it.name }
+                .map { FieldSpec.builder(String::class.java, "PROP_${asConstName(it)}").addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL).initializer("\$S", it) }
+                .forEach { observableClassBuilder.addField(it.build()) }
+
+        codeSpec.properties
+                .map { buildConcreteGetMethod(it.name, asType(it.type)).addCode("return this.$1L.$2L();", "origin", "get${upperFirst(it.name)}") }
+                .forEach { observableClassBuilder.addMethod(it.build()) }
+
+        codeSpec.properties
+                .map {
+                    buildConcreteSetMethod(it.name, asType(it.type))
+                            .addCode("\$T \$L = this.\$L.\$L();\n", asType(it.type), "old${upperFirst(it.name)}", "origin", "get${upperFirst(it.name)}")
+                            .addCode("this.\$L.\$L(\$L);\n", "origin", "set${upperFirst(it.name)}", it.name)
+                            .addCode("if(!Objects.equals(\$L,\$L))) this.propertyChangeSupport.firePropertyChange(\$L,\$L,\$L);\n", "old${upperFirst(it.name)}", it.name, "PROP_${asConstName(it.name)}", "old${upperFirst(it.name)}", "old${upperFirst(it.name)}")
+                }
+                .forEach { observableClassBuilder.addMethod(it.build()) }
+
+
+        mainInterfaceBuilder.addType(observableClassBuilder.build())
+    }
+
+
     override fun generate(context: Context, codeSpec: DataClassSpec) {
         val mainInterfaceClassName = ClassName.get(codeSpec.packageName, codeSpec.name)
         val mutableInterfaceClassName = ClassName.get(codeSpec.packageName, codeSpec.name + ".Mutable")
@@ -125,8 +191,8 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 .addSuperinterface(mutableInterfaceClassName)
 
         codeSpec.properties.forEach { dtoClassBuilder.addField(makeField(it.name, asType(it.type))) }
-        codeSpec.properties.forEach { dtoClassBuilder.addMethod(makeConcreteGetMethod(it.name, asType(it.type))) }
-        codeSpec.properties.forEach { dtoClassBuilder.addMethod(makeConcreteSetMethod(it.name, asType(it.type))) }
+        codeSpec.properties.forEach { dtoClassBuilder.addMethod(makeSimpleConcreteGetMethod(it.name, asType(it.type))) }
+        codeSpec.properties.forEach { dtoClassBuilder.addMethod(makeSimpleConcreteSetMethod(it.name, asType(it.type))) }
         dtoClassBuilder.addMethod(makeCopyMethod(dtoClassName, mainInterfaceClassName, codeSpec.properties.map { it.name }))
         dtoClassBuilder.addMethod(makeCloneMethod(dtoClassName, dtoClassName))
 
@@ -145,6 +211,10 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                         .addType(builderClassBuilder.build())
 
         codeSpec.properties.forEach { mainInterfaceBuilder.addMethod(makeAsbtractGetMethod(it.name, asType(it.type))) }
+
+        if (codeSpec.observable) {
+            observableExtension(codeSpec, mainInterfaceBuilder)
+        }
 
         val javaFile = JavaFile.builder(codeSpec.packageName, mainInterfaceBuilder.build())
                 .build()
