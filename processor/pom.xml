@@ -5,12 +5,11 @@
     <parent>
         <artifactId>codegen</artifactId>
         <groupId>io.gitlab.ettoreleandrotognoli</groupId>
-        <version>${revision}</version>
+        <version>0.0.1-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>codegen-processor</artifactId>
-    <version>${revision}</version>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -35,7 +34,6 @@
         <dependency>
             <groupId>io.gitlab.ettoreleandrotognoli</groupId>
             <artifactId>codegen-core</artifactId>
-            <version>${revision}</version>
         </dependency>
     </dependencies>
 

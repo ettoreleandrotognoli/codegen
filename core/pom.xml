@@ -5,11 +5,10 @@
     <parent>
         <artifactId>codegen</artifactId>
         <groupId>io.gitlab.ettoreleandrotognoli</groupId>
-        <version>${revision}</version>
+        <version>0.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>codegen-core</artifactId>
-    <version>${revision}</version>
     <packaging>jar</packaging>
 
     <properties>
