@@ -136,6 +136,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
     fun makeToString(codeSpec: DataClassSpec, pattern: String): MethodSpec {
         val methodSpecBuilder = MethodSpec.methodBuilder("toString")
                 .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override::class.java)
                 .returns(String::class.java)
         methodSpecBuilder.addCode(
                 "return String.format(\$S, ${codeSpec.properties.joinToString(separator = ", ") { it.name }} );\n",
@@ -201,6 +202,13 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 }
                 .forEach { observableClassBuilder.addMethod(it.build()) }
 
+
+        observableClassBuilder.addMethod(MethodSpec.methodBuilder("toString")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override::class.java)
+                .returns(String::class.java)
+                .addCode("return String.format(\$S,\$L.\$L());\n", "Observable( %s )", "origin", "toString")
+                .build())
 
         mainInterfaceBuilder.addType(observableClassBuilder.build())
     }
