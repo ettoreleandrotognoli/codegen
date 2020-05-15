@@ -7,6 +7,7 @@ import io.github.ettoreleandrotognoli.codegen.data.DataClassSpec
 import org.springframework.stereotype.Component
 import java.beans.PropertyChangeListener
 import java.beans.PropertyChangeSupport
+import java.util.*
 import java.util.regex.Pattern
 import javax.lang.model.element.Modifier
 
@@ -166,7 +167,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                     buildConcreteSetMethod(it.name, asType(it.type))
                             .addCode("\$T \$L = this.\$L.\$L();\n", asType(it.type), "old${upperFirst(it.name)}", "origin", "get${upperFirst(it.name)}")
                             .addCode("this.\$L.\$L(\$L);\n", "origin", "set${upperFirst(it.name)}", it.name)
-                            .addCode("if(!Objects.equals(\$L,\$L))) this.propertyChangeSupport.firePropertyChange(\$L,\$L,\$L);\n", "old${upperFirst(it.name)}", it.name, "PROP_${asConstName(it.name)}", "old${upperFirst(it.name)}", "old${upperFirst(it.name)}")
+                            .addCode("if(!\$T.equals(\$L,\$L)) this.propertyChangeSupport.firePropertyChange(\$L,\$L,\$L);\n", Objects::class.java, "old${upperFirst(it.name)}", it.name, "PROP_${asConstName(it.name)}", "old${upperFirst(it.name)}", "old${upperFirst(it.name)}")
                 }
                 .forEach { observableClassBuilder.addMethod(it.build()) }
 
