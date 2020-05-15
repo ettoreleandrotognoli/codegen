@@ -7,7 +7,7 @@ import javax.lang.model.element.TypeElement
 import javax.swing.JOptionPane
 
 @AutoService(Processor::class)
-@SupportedAnnotationTypes("io.gitlab.ettoreleandrotognoli.codegen.*")
+@SupportedAnnotationTypes("io.github.ettoreleandrotognoli.codegen.*")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 class AnnotationProcessor : AbstractProcessor() {
     override fun process(annotations: MutableSet<out TypeElement>, roundEnv: RoundEnvironment): Boolean {

@@ -20,7 +20,7 @@ class DataClassSpecGeneratorTest {
         val project = Project.DTO(basePath, File(basePath, "target"), File(basePath, "target/generated-sources/codegen"))
         val generator = DataClassGenerator()
         generator.generate(CodegenContext(project), Sample.DataClass.EXAMPLE_NAME);
-        val javaFile = File(project.generatedSourcePath, "io/gitlab/ettoreleandrotognoli/example/Name.java")
+        val javaFile = File(project.generatedSourcePath, "io/github/ettoreleandrotognoli/example/Name.java")
         assertTrue(javaFile.exists())
     }
 
