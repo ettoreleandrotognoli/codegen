@@ -1,10 +1,10 @@
 package com.github.ettoreleandrotognoli.codegen.java
 
-import com.squareup.javapoet.*
 import com.github.ettoreleandrotognoli.codegen.api.Context
 import com.github.ettoreleandrotognoli.codegen.core.AbstractCodeGenerator
 import com.github.ettoreleandrotognoli.codegen.data.DataClassSpec
 import com.github.ettoreleandrotognoli.codegen.data.ObservableSpec
+import com.squareup.javapoet.*
 import org.springframework.stereotype.Component
 import java.beans.PropertyChangeListener
 import java.beans.PropertyChangeSupport
@@ -17,6 +17,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
 
 
     val camelCaseRegex = Pattern.compile("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])")
+    val interpolateRegex = Pattern.compile("\\$(?=[a-zA-Z]+)")
 
     fun asType(className: String): ClassName {
         return ClassName.bestGuess(className)
@@ -132,6 +133,17 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         return methodSpecBuilder.build()
     }
 
+    fun makeToString(codeSpec: DataClassSpec, pattern: String): MethodSpec {
+        val methodSpecBuilder = MethodSpec.methodBuilder("toString")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(String::class.java)
+        methodSpecBuilder.addCode(
+                "return String.format(\$S, ${codeSpec.properties.joinToString(separator = ", ") { it.name }} );\n",
+                codeSpec.properties.fold(pattern, { s, p -> s.replace("\$${p.name}", "%s") })
+        );
+        return methodSpecBuilder.build();
+    }
+
 
     fun observableExtension(codeSpec: DataClassSpec, observableSpec: ObservableSpec, mainInterfaceBuilder: TypeSpec.Builder) {
         val mutable = ClassName.get(codeSpec.packageName, codeSpec.name + ".Mutable")
@@ -220,6 +232,11 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                 .addField(FieldSpec.builder(dtoClassName, "prototype", Modifier.PRIVATE, Modifier.FINAL).initializer("new \$T()", dtoClassName).build())
                 .addMethod(makeBuildMethod(dtoClassName))
+
+        val toStringPattern = codeSpec.toString
+                ?: codeSpec.properties.joinToString(prefix = "${codeSpec.name} {", separator = ", ", postfix = "}") { "${it.name}=\$${it.name}" }
+
+        dtoClassBuilder.addMethod(makeToString(codeSpec, toStringPattern))
 
         codeSpec.properties.forEach { builderClassBuilder.addMethod(makeBuilderSetMethod(builderClassName, it.name, asType(it.type))) }
 

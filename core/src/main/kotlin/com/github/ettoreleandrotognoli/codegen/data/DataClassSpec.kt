@@ -11,7 +11,8 @@ data class DataClassSpec(
         val properties: List<Property> = Collections.emptyList(),
         val observable: ObservableSpec? = null,
         val extends: String = "Object",
-        val implements: List<String> = Collections.emptyList()
+        val implements: List<String> = Collections.emptyList(),
+        val toString: String? = null
 ) : CodeSpec {
 
 
