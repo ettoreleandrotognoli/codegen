@@ -167,7 +167,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                     buildConcreteSetMethod(it.name, asType(it.type))
                             .addCode("\$T \$L = this.\$L.\$L();\n", asType(it.type), "old${upperFirst(it.name)}", "origin", "get${upperFirst(it.name)}")
                             .addCode("this.\$L.\$L(\$L);\n", "origin", "set${upperFirst(it.name)}", it.name)
-                            .addCode("if(!\$T.equals(\$L,\$L)) this.propertyChangeSupport.firePropertyChange(\$L,\$L,\$L);\n", Objects::class.java, "old${upperFirst(it.name)}", it.name, "PROP_${asConstName(it.name)}", "old${upperFirst(it.name)}", "old${upperFirst(it.name)}")
+                            .addCode("if(!\$T.equals(\$L,\$L)) this.propertyChangeSupport.firePropertyChange(\$L,\$L,\$L);\n", Objects::class.java, "old${upperFirst(it.name)}", it.name, "PROP_${asConstName(it.name)}", "old${upperFirst(it.name)}", it.name)
                 }
                 .forEach { observableClassBuilder.addMethod(it.build()) }
 
