@@ -46,6 +46,13 @@ fun isBooleanType(rawType: String): Boolean {
     return listOf("Boolean", "boolean").contains(rawType)
 }
 
+/**
+ * workaround to avoid conflict names when there are inheritance between dataclasses
+ */
+fun ClassName.fullName(): ClassName {
+    return ClassName.get(this.packageName(), this.simpleNames().joinToString(separator = "."))
+}
+
 @Component
 class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::class) {
 
@@ -73,6 +80,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
             val dtoType: ClassName,
             val mutableType: ClassName,
             val builderType: ClassName,
+            val observableType: ClassName,
             val properties: List<String>,
             val propertyType: Map<String, TypeName>,
             val propertySetMethodName: Map<String, String>,
@@ -84,13 +92,13 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
 
 
             fun from(rawSpec: DataClassSpec): ProcessedDataClassSpec {
-
                 return ProcessedDataClassSpec(
                         rawSpec = rawSpec,
                         type = ClassName.get(rawSpec.packageName, rawSpec.name),
                         dtoType = ClassName.get(rawSpec.packageName, rawSpec.name).nestedClass("DTO"),
                         mutableType = ClassName.get(rawSpec.packageName, rawSpec.name).nestedClass("Mutable"),
                         builderType = ClassName.get(rawSpec.packageName, rawSpec.name).nestedClass("Builder"),
+                        observableType = ClassName.get(rawSpec.packageName, rawSpec.name).nestedClass("Observable"),
                         extends = asType(rawSpec.extends),
                         implements = rawSpec.implements.map { asType(it) },
                         properties = rawSpec.properties.map { it.name },
@@ -224,14 +232,21 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         fun cloneMethod(): MethodSpec.Builder {
             return MethodSpec.methodBuilder("clone")
                     .addModifiers(Modifier.PUBLIC)
-                    .returns(dtoType)
+                    .returns(dtoType.fullName())
                     .also {
-                        it.addCode("return new $1T(this);\n", dtoType)
+                        it.addCode("return new $1T(this);\n", dtoType.fullName())
                     }
         }
 
-    }
+        fun buildMethod(): MethodSpec.Builder {
+            return MethodSpec
+                    .methodBuilder("build")
+                    .addModifiers(Modifier.PUBLIC)
+                    .returns(dtoType.fullName())
+                    .addCode("return this.\$N.clone();", "prototype")
+        }
 
+    }
 
     val camelCaseRegex = Pattern.compile("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])")
 
@@ -264,15 +279,6 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
     }
 
 
-    fun makeBuildMethod(returnType: TypeName): MethodSpec {
-        val methodSpecBuilder = MethodSpec
-                .methodBuilder("build")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(returnType)
-                .addCode("return this.\$N.clone();", "prototype")
-        return methodSpecBuilder.build()
-    }
-
     fun makeToString(codeSpec: DataClassSpec, pattern: String): MethodSpec {
         val methodSpecBuilder = MethodSpec.methodBuilder("toString")
                 .addModifiers(Modifier.PUBLIC)
@@ -289,9 +295,9 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
     fun observableExtension(codeSpec: ProcessedDataClassSpec, observableSpec: ProcessedObservableSpec, mainInterfaceBuilder: TypeSpec.Builder) {
         val observableClassBuilder = TypeSpec.classBuilder("Observable")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addSuperinterface(codeSpec.mutableType)
-                .addField(FieldSpec.builder(codeSpec.mutableType, "origin").addModifiers(Modifier.PRIVATE, Modifier.FINAL).build())
-                .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC).addParameter(codeSpec.mutableType, "origin").addCode("this.$1N = $1N;", "origin").build())
+                .addSuperinterface(codeSpec.mutableType.fullName())
+                .addField(FieldSpec.builder(codeSpec.mutableType.fullName(), "origin").addModifiers(Modifier.PRIVATE, Modifier.FINAL).build())
+                .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC).addParameter(codeSpec.mutableType.fullName(), "origin").addCode("this.$1N = $1N;", "origin").build())
 
         observableClassBuilder.superclass(observableSpec.extends)
         observableSpec.implements.forEach {
@@ -353,6 +359,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
 
 
     override fun generate(context: Context, codeSpec: DataClassSpec) {
+
         val spec = ProcessedDataClassSpec.from(codeSpec)
 
         val mutableInterfaceBuilder = TypeSpec.interfaceBuilder(spec.mutableType)
@@ -365,7 +372,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
 
         val dtoClassBuilder = TypeSpec.classBuilder(spec.dtoType)
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addSuperinterface(spec.mutableType)
+                .addSuperinterface(spec.mutableType.fullName())
 
         spec.fields().forEach {
             dtoClassBuilder.addField(it.build())
@@ -391,8 +398,10 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
 
         val builderClassBuilder = TypeSpec.classBuilder("Builder")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addField(FieldSpec.builder(spec.dtoType, "prototype", Modifier.PRIVATE, Modifier.FINAL).initializer("new \$T()", spec.dtoType).build())
-                .addMethod(makeBuildMethod(spec.dtoType))
+                .addField(FieldSpec.builder(spec.dtoType.fullName(), "prototype", Modifier.PRIVATE, Modifier.FINAL).initializer("new \$T()", spec.dtoType.fullName()).build())
+                .addMethod(spec.buildMethod().build())
+
+
 
         spec.builderSetMethods().forEach {
             builderClassBuilder.addMethod(it.build())
