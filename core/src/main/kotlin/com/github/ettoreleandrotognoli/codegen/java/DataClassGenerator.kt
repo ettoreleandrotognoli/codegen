@@ -4,27 +4,224 @@ import com.github.ettoreleandrotognoli.codegen.api.Context
 import com.github.ettoreleandrotognoli.codegen.core.AbstractCodeGenerator
 import com.github.ettoreleandrotognoli.codegen.data.DataClassSpec
 import com.github.ettoreleandrotognoli.codegen.data.ObservableSpec
+import com.github.ettoreleandrotognoli.codegen.upperFirst
 import com.squareup.javapoet.*
 import org.springframework.stereotype.Component
 import java.beans.PropertyChangeListener
 import java.beans.PropertyChangeSupport
 import java.util.*
 import java.util.regex.Pattern
+import java.util.stream.Stream
 import javax.lang.model.element.Modifier
 
 @Component
 class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::class) {
 
 
+    class ProcessedDataClassSpec(
+            val rawSpec: DataClassSpec,
+            val type: TypeName,
+            val extends: TypeName,
+            val implements: List<TypeName>,
+            val dtoType: ClassName,
+            val mutableType: ClassName,
+            val builderType: ClassName,
+            val properties: List<String>,
+            val propertyType: Map<String, TypeName>,
+            val propertySetMethodName: Map<String, String>,
+            val propertyGetMethodName: Map<String, String>
+
+    ) {
+        companion object {
+
+            fun asType(rawType: String): TypeName {
+                if (rawType.contains("<")) {
+                    val baseRawType = rawType.substring(0, rawType.indexOf("<"))
+                    val baseType = ClassName.bestGuess(baseRawType)
+                    val rawParameterizedTypes = rawType.substring(rawType.indexOf("<") + 1, rawType.length - 1)
+                    val parameterizedTypes = rawParameterizedTypes
+                            .split(",")
+                            .map { it.trim() }
+                            .map { asType(it) }
+                            .toTypedArray()
+                    return ParameterizedTypeName.get(baseType, *parameterizedTypes)
+                }
+                val primitiveMap = listOf(
+                        ClassName.BOOLEAN,
+                        ClassName.BYTE,
+                        ClassName.CHAR,
+                        ClassName.FLOAT,
+                        ClassName.DOUBLE,
+                        ClassName.INT,
+                        ClassName.VOID,
+                        ClassName.LONG,
+                        ClassName.SHORT
+                )
+                        .map { it.toString() to it }.toMap()
+                return primitiveMap.getOrElse(rawType, { ClassName.bestGuess(rawType) })
+            }
+
+            fun isBooleanType(rawType: String): Boolean {
+                return listOf("Boolean", "boolean").contains(rawType)
+            }
+
+            fun from(rawSpec: DataClassSpec): ProcessedDataClassSpec {
+
+                return ProcessedDataClassSpec(
+                        rawSpec = rawSpec,
+                        type = ClassName.get(rawSpec.packageName, rawSpec.name),
+                        dtoType = ClassName.get(rawSpec.packageName, rawSpec.name).nestedClass("DTO"),
+                        mutableType = ClassName.get(rawSpec.packageName, rawSpec.name).nestedClass("Mutable"),
+                        builderType = ClassName.get(rawSpec.packageName, rawSpec.name).nestedClass("Builder"),
+                        extends = asType(rawSpec.extends),
+                        implements = rawSpec.implements.map { asType(it) },
+                        properties = rawSpec.properties.map { it.name },
+                        propertyType = rawSpec.properties
+                                .map { Pair(it.name, asType(it.type)) }
+                                .toMap(),
+                        propertySetMethodName = rawSpec.properties
+                                .map { Pair(it.name, "set${it.name.upperFirst()}") }
+                                .toMap(),
+                        propertyGetMethodName = rawSpec.properties
+                                .map { Pair(it.name, (if (isBooleanType(it.type)) ("is${it.name.upperFirst()}") else ("get${it.name.upperFirst()}"))) }
+                                .toMap()
+                )
+            }
+        }
+
+        fun abstractGetMethods(): Stream<MethodSpec.Builder> {
+            return properties.stream().map {
+                MethodSpec.methodBuilder(propertyGetMethodName[it])
+                        .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                        .returns(propertyType[it])
+            }
+        }
+
+        fun abstractSetMethod(): Stream<MethodSpec.Builder> {
+            return properties.stream().map {
+                MethodSpec.methodBuilder(propertySetMethodName[it])
+                        .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                        .addParameter(propertyType[it], it)
+            }
+        }
+
+        fun concreteGetMethods(): Stream<MethodSpec.Builder> {
+            return properties.stream().map {
+                MethodSpec.methodBuilder(propertyGetMethodName[it])
+                        .addModifiers(Modifier.PUBLIC)
+                        .addAnnotation(Override::class.java)
+                        .returns(propertyType[it])
+                        .addCode("return this.$1L;\n", it)
+
+            }
+        }
+
+        fun concreteSetMethods(): Stream<MethodSpec.Builder> {
+            return properties.stream().map {
+                MethodSpec.methodBuilder(propertySetMethodName[it])
+                        .addModifiers(Modifier.PUBLIC)
+                        .addAnnotation(Override::class.java)
+                        .addParameter(propertyType[it], it)
+                        .addCode("this.$1L = $1L;\n", it)
+            }
+        }
+
+        fun builderSetMethods(): Stream<MethodSpec.Builder> {
+            return properties.stream().map {
+                MethodSpec.methodBuilder(propertySetMethodName[it])
+                        .addModifiers(Modifier.PUBLIC)
+                        .addParameter(propertyType[it], it)
+                        .returns(builderType)
+                        .addCode("this.$1L.$2L($3L);\n", "prototype", propertySetMethodName[it], it)
+                        .addCode("return this;\n")
+            }
+        }
+
+        fun fields(): Stream<FieldSpec.Builder> {
+            return properties.stream().map {
+                FieldSpec.builder(propertyType[it], it)
+                        .addModifiers(Modifier.PRIVATE)
+            }
+        }
+
+        fun emptyConstructor(): MethodSpec.Builder {
+            return MethodSpec.constructorBuilder()
+                    .addModifiers(Modifier.PUBLIC)
+        }
+
+        fun fullConstructorSignature(): MethodSpec.Builder {
+            return MethodSpec.constructorBuilder()
+                    .addModifiers(Modifier.PUBLIC)
+                    .also {
+                        properties.forEach { p ->
+                            it.addParameter(propertyType[p], p)
+                        }
+                    }
+        }
+
+        fun fullConstructor(): MethodSpec.Builder {
+            return fullConstructorSignature().also {
+                properties.forEach { p ->
+                    it.addCode("this.$1L = $1L", p)
+                }
+            }
+        }
+
+        fun copyConstructorSignature(): MethodSpec.Builder {
+            return MethodSpec.constructorBuilder()
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(type, "source")
+        }
+
+        fun copyConstructor(): MethodSpec.Builder {
+            return copyConstructorSignature().also {
+                properties.forEach { p ->
+                    it.addCode("this.$1L = $2L.$3L();\n", p, "other", propertyGetMethodName[p])
+                }
+            }
+        }
+
+        fun constructors(): Stream<MethodSpec.Builder> {
+            return Stream.of(
+                    emptyConstructor(),
+                    fullConstructor(),
+                    copyConstructor()
+            )
+        }
+
+        fun copyMethod(): MethodSpec.Builder {
+            return MethodSpec.methodBuilder("copy")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(type, "source")
+                    .returns(type)
+                    .also {
+                        properties.forEach { p ->
+                            it.addCode("this.$1L = $2L.$3L();\n", p, "source", propertyGetMethodName[p])
+                        }
+                        it.addCode("return this;\n")
+                    }
+        }
+
+        fun cloneMethod(): MethodSpec.Builder {
+            return MethodSpec.methodBuilder("clone")
+                    .addModifiers(Modifier.PUBLIC)
+                    .returns(type)
+                    .also {
+                        it.addCode("return new $1T(this);\n", dtoType)
+                    }
+        }
+
+    }
+
+
     val camelCaseRegex = Pattern.compile("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])")
-    val interpolateRegex = Pattern.compile("\\$(?=[a-zA-Z]+)")
 
     fun asType(className: String): ClassName {
         return ClassName.bestGuess(className)
     }
 
     fun upperFirst(string: String): String {
-        return string[0].toUpperCase() + string.substring(1)
+        return string.upperFirst()
     }
 
     fun asGetMethodName(propertyName: String): String {
@@ -37,23 +234,6 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 .joinToString(separator = "_")
     }
 
-    fun makeAbstractSetMethod(propertyName: String, type: TypeName): MethodSpec {
-        val parameter = ParameterSpec.builder(type, propertyName).build()
-        return MethodSpec
-                .methodBuilder("set${upperFirst(propertyName)}")
-                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                .addParameter(parameter)
-                .build()
-
-    }
-
-    fun makeSimpleConcreteSetMethod(propertyName: String, type: TypeName): MethodSpec {
-        val parameter = ParameterSpec.builder(type, propertyName).build()
-        return buildConcreteSetMethod(propertyName, type)
-                .addCode("this.$1L = $1L;", propertyName)
-                .build()
-    }
-
     fun buildConcreteSetMethod(propertyName: String, type: TypeName): MethodSpec.Builder {
         val parameter = ParameterSpec.builder(type, propertyName).build()
         return MethodSpec
@@ -64,14 +244,6 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
     }
 
 
-    fun makeAsbtractGetMethod(propertyName: String, type: TypeName): MethodSpec {
-        return MethodSpec
-                .methodBuilder("get${upperFirst(propertyName)}")
-                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                .returns(type)
-                .build()
-    }
-
     fun buildConcreteGetMethod(propertyName: String, type: TypeName): MethodSpec.Builder {
         return MethodSpec
                 .methodBuilder("get${upperFirst(propertyName)}")
@@ -80,53 +252,6 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 .returns(type)
     }
 
-
-    fun makeSimpleConcreteGetMethod(propertyName: String, type: TypeName): MethodSpec {
-        return buildConcreteGetMethod(propertyName, type)
-                .addCode("return this.$1L;", propertyName)
-                .build()
-    }
-
-    fun makeField(propertyName: String, type: TypeName): FieldSpec {
-        return FieldSpec.builder(type, propertyName, Modifier.PRIVATE)
-                .build()
-    }
-
-    fun makeCopyMethod(returnType: TypeName, parameterType: TypeName, properties: Collection<String>): MethodSpec {
-        val parameter = ParameterSpec.builder(parameterType, "source").build()
-        val methodSpecBuilder = MethodSpec
-                .methodBuilder("copy")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(parameter)
-                .returns(returnType)
-        properties.forEach {
-            methodSpecBuilder.addCode("this.$1N = $2N.get${upperFirst(it)}();\n", it, "source")
-        }
-        return methodSpecBuilder.addCode("return this;")
-                .build()
-
-    }
-
-    fun makeCloneMethod(returnType: TypeName, concreteType: TypeName): MethodSpec {
-        val methodSpecBuilder = MethodSpec
-                .methodBuilder("clone")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(returnType)
-                .addCode("return new \$T().copy(this);", concreteType)
-        return methodSpecBuilder.build()
-    }
-
-    fun makeBuilderSetMethod(builderType: TypeName, propertyName: String, propertyType: TypeName): MethodSpec {
-        val parameter = ParameterSpec.builder(propertyType, propertyName).build()
-        val methodSpecBuilder = MethodSpec
-                .methodBuilder("set${upperFirst(propertyName)}")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(parameter)
-                .returns(builderType)
-                .addCode("this.\$N.set${upperFirst(propertyName)}(\$N);\n", "prototype", propertyName)
-                .addCode("return this;")
-        return methodSpecBuilder.build()
-    }
 
     fun makeBuildMethod(returnType: TypeName): MethodSpec {
         val methodSpecBuilder = MethodSpec
@@ -147,34 +272,6 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 codeSpec.properties.fold(pattern, { s, p -> s.replace("\$${p.name}", "%s") })
         );
         return methodSpecBuilder.build();
-    }
-
-    fun makeEmptyConstructor(): MethodSpec {
-        val methodSpecBuilder = MethodSpec.constructorBuilder()
-                .addModifiers(Modifier.PUBLIC)
-        return methodSpecBuilder.build()
-    }
-
-    fun makeFullConstructor(codeSpec: DataClassSpec): MethodSpec {
-        val methodSpecBuilder = MethodSpec.constructorBuilder()
-                .addModifiers(Modifier.PUBLIC)
-        codeSpec.properties.forEach {
-            methodSpecBuilder.addParameter(asType(it.type), it.name)
-        }
-        codeSpec.properties.forEach {
-            methodSpecBuilder.addCode("this.$1L = $1L;\n", it.name)
-        }
-        return methodSpecBuilder.build()
-    }
-
-    fun makeCopyConstructor(codeSpec: DataClassSpec): MethodSpec {
-        val methodSpecBuilder = MethodSpec.constructorBuilder()
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(ClassName.get(codeSpec.packageName, codeSpec.name), "source")
-        codeSpec.properties.forEach {
-            methodSpecBuilder.addCode("this.\$L = \$L.\$L();\n", it.name, "source", asGetMethodName(it.name))
-        }
-        return methodSpecBuilder.build()
     }
 
 
@@ -247,36 +344,50 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
 
 
     override fun generate(context: Context, codeSpec: DataClassSpec) {
-        val mainInterfaceClassName = ClassName.get(codeSpec.packageName, codeSpec.name)
-        val mutableInterfaceClassName = ClassName.get(codeSpec.packageName, codeSpec.name + ".Mutable")
-        val dtoClassName = ClassName.get(codeSpec.packageName, codeSpec.name + ".DTO")
-        val builderClassName = ClassName.get(codeSpec.packageName, codeSpec.name + ".Builder")
-        val mutableInterfaceBuilder = TypeSpec.interfaceBuilder("Mutable")
+        val spec = ProcessedDataClassSpec.from(codeSpec)
+
+        val mutableInterfaceBuilder = TypeSpec.interfaceBuilder(spec.mutableType)
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addSuperinterface(mainInterfaceClassName);
+                .addSuperinterface(spec.type);
 
-        codeSpec.properties.forEach { mutableInterfaceBuilder.addMethod(makeAbstractSetMethod(it.name, asType(it.type))) }
+        spec.abstractSetMethod().forEach {
+            mutableInterfaceBuilder.addMethod(it.build())
+        }
 
-        val dtoClassBuilder = TypeSpec.classBuilder("DTO")
+        val dtoClassBuilder = TypeSpec.classBuilder(spec.dtoType)
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addSuperinterface(mutableInterfaceClassName)
+                .addSuperinterface(spec.mutableType)
 
-        codeSpec.properties.forEach { dtoClassBuilder.addField(makeField(it.name, asType(it.type))) }
-        dtoClassBuilder.addMethod(makeEmptyConstructor())
-        dtoClassBuilder.addMethod(makeFullConstructor(codeSpec))
-        dtoClassBuilder.addMethod(makeCopyConstructor(codeSpec))
-        codeSpec.properties.forEach { dtoClassBuilder.addMethod(makeSimpleConcreteGetMethod(it.name, asType(it.type))) }
-        codeSpec.properties.forEach { dtoClassBuilder.addMethod(makeSimpleConcreteSetMethod(it.name, asType(it.type))) }
-        dtoClassBuilder.addMethod(makeCopyMethod(dtoClassName, mainInterfaceClassName, codeSpec.properties.map { it.name }))
-        dtoClassBuilder.addMethod(makeCloneMethod(dtoClassName, dtoClassName))
-        dtoClassBuilder.superclass(asType(codeSpec.extends))
+        spec.fields().forEach {
+            dtoClassBuilder.addField(it.build())
+        }
+
+        spec.constructors().forEach {
+            dtoClassBuilder.addMethod(it.build())
+        }
+
+        spec.concreteGetMethods().forEach {
+            dtoClassBuilder.addMethod(it.build())
+        }
+
+        spec.concreteSetMethods().forEach {
+            dtoClassBuilder.addMethod(it.build())
+        }
+
+        dtoClassBuilder.addMethod(spec.copyMethod().build())
+
+        dtoClassBuilder.addMethod(spec.cloneMethod().build())
+
+        dtoClassBuilder.superclass(spec.extends)
 
         val builderClassBuilder = TypeSpec.classBuilder("Builder")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addField(FieldSpec.builder(dtoClassName, "prototype", Modifier.PRIVATE, Modifier.FINAL).initializer("new \$T()", dtoClassName).build())
-                .addMethod(makeBuildMethod(dtoClassName))
+                .addField(FieldSpec.builder(spec.dtoType, "prototype", Modifier.PRIVATE, Modifier.FINAL).initializer("new \$T()", spec.dtoType).build())
+                .addMethod(makeBuildMethod(spec.dtoType))
 
-
+        spec.builderSetMethods().forEach {
+            builderClassBuilder.addMethod(it.build())
+        }
 
         if (codeSpec.toString.enable) {
             val toStringPattern = codeSpec.toString.pattern
@@ -294,21 +405,24 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
             dtoClassBuilder.addMethod(makeEquals(codeSpec, fields))
         }
 
-
-        codeSpec.properties.forEach { builderClassBuilder.addMethod(makeBuilderSetMethod(builderClassName, it.name, asType(it.type))) }
+        val mutableInterface = mutableInterfaceBuilder.build()
+        val dtoClass = dtoClassBuilder.build()
+        val builderClass = builderClassBuilder.build()
 
         val mainInterfaceBuilder =
                 TypeSpec.interfaceBuilder(codeSpec.name)
                         .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                        .addType(mutableInterfaceBuilder.build())
-                        .addType(dtoClassBuilder.build())
-                        .addType(builderClassBuilder.build())
+                        .addType(mutableInterface)
+                        .addType(dtoClass)
+                        .addType(builderClass)
 
         codeSpec.implements.forEach {
             mainInterfaceBuilder.addSuperinterface(asType(it))
         }
 
-        codeSpec.properties.forEach { mainInterfaceBuilder.addMethod(makeAsbtractGetMethod(it.name, asType(it.type))) }
+        spec.abstractGetMethods().forEach {
+            mainInterfaceBuilder.addMethod(it.build())
+        }
 
         if (codeSpec.observable != null) {
             observableExtension(codeSpec, codeSpec.observable, mainInterfaceBuilder)

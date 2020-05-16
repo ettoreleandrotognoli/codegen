@@ -11,3 +11,8 @@ fun InputStream.asString(): String {
     stringBuilder.append(String(buffer))
     return stringBuilder.toString()
 }
+
+
+fun String.upperFirst(): String {
+    return this[0].toUpperCase() + this.substring(1)
+}

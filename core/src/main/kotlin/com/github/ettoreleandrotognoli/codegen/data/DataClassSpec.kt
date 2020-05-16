@@ -17,5 +17,4 @@ data class DataClassSpec(
         val hashCode: HashCodeSpec = HashCodeSpec()
 ) : CodeSpec {
 
-
 }

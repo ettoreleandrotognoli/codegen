@@ -16,7 +16,15 @@ class Sample {
 
     class DataClass {
         companion object {
-            val EXAMPLE_NAME = DataClassSpec("Name", "com.github.ettoreleandrotognoli.example", listOf(Property(name = "value", type = "String")))
+            val EXAMPLE_NAME = DataClassSpec(
+                    "Name",
+                    "com.github.ettoreleandrotognoli.example",
+                    listOf(
+                            Property(name = "value", type = "String"),
+                            Property(name = "enabled", type = "boolean"),
+                            Property(name = "list", type = "java.util.List<String>")
+                    )
+            )
         }
     }
 
