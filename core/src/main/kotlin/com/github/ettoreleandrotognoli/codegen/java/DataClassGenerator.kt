@@ -149,6 +149,34 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         return methodSpecBuilder.build();
     }
 
+    fun makeEmptyConstructor(): MethodSpec {
+        val methodSpecBuilder = MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
+        return methodSpecBuilder.build()
+    }
+
+    fun makeFullConstructor(codeSpec: DataClassSpec): MethodSpec {
+        val methodSpecBuilder = MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
+        codeSpec.properties.forEach {
+            methodSpecBuilder.addParameter(asType(it.type), it.name)
+        }
+        codeSpec.properties.forEach {
+            methodSpecBuilder.addCode("this.$1L = $1L;\n", it.name)
+        }
+        return methodSpecBuilder.build()
+    }
+
+    fun makeCopyConstructor(codeSpec: DataClassSpec): MethodSpec {
+        val methodSpecBuilder = MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(ClassName.get(codeSpec.packageName, codeSpec.name), "source")
+        codeSpec.properties.forEach {
+            methodSpecBuilder.addCode("this.\$L = \$L.\$L();\n", it.name, "source", asGetMethodName(it.name))
+        }
+        return methodSpecBuilder.build()
+    }
+
 
     fun observableExtension(codeSpec: DataClassSpec, observableSpec: ObservableSpec, mainInterfaceBuilder: TypeSpec.Builder) {
         val mutable = ClassName.get(codeSpec.packageName, codeSpec.name + ".Mutable")
@@ -234,6 +262,9 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 .addSuperinterface(mutableInterfaceClassName)
 
         codeSpec.properties.forEach { dtoClassBuilder.addField(makeField(it.name, asType(it.type))) }
+        dtoClassBuilder.addMethod(makeEmptyConstructor())
+        dtoClassBuilder.addMethod(makeFullConstructor(codeSpec))
+        dtoClassBuilder.addMethod(makeCopyConstructor(codeSpec))
         codeSpec.properties.forEach { dtoClassBuilder.addMethod(makeSimpleConcreteGetMethod(it.name, asType(it.type))) }
         codeSpec.properties.forEach { dtoClassBuilder.addMethod(makeSimpleConcreteSetMethod(it.name, asType(it.type))) }
         dtoClassBuilder.addMethod(makeCopyMethod(dtoClassName, mainInterfaceClassName, codeSpec.properties.map { it.name }))
