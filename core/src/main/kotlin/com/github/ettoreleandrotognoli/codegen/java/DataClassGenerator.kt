@@ -191,7 +191,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
             observableClassBuilder.addSuperinterface(asType(it))
         }
 
-        observableClassBuilder.addField(FieldSpec.builder(PropertyChangeSupport::class.java, "propertyChangeSupport").addModifiers(Modifier.FINAL, Modifier.PRIVATE).initializer("new PropertyChangeSupport(this)").build())
+        observableClassBuilder.addField(FieldSpec.builder(PropertyChangeSupport::class.java, "propertyChangeSupport").addModifiers(Modifier.FINAL, Modifier.PRIVATE, Modifier.TRANSIENT).initializer("new PropertyChangeSupport(this)").build())
 
         observableClassBuilder.addMethod(MethodSpec.methodBuilder("addPropertyChangeListener")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
