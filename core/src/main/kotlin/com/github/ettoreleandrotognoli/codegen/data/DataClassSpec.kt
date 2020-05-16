@@ -12,7 +12,9 @@ data class DataClassSpec(
         val observable: ObservableSpec? = null,
         val extends: String = "Object",
         val implements: List<String> = Collections.emptyList(),
-        val toString: String? = null
+        val toString: ToStringSpec = ToStringSpec(),
+        val equals: EqualsSpec = EqualsSpec(),
+        val hashCode: HashCodeSpec = HashCodeSpec()
 ) : CodeSpec {
 
 

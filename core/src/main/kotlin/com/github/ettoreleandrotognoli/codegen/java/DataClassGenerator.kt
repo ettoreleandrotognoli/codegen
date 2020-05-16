@@ -27,6 +27,10 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         return string[0].toUpperCase() + string.substring(1)
     }
 
+    fun asGetMethodName(propertyName: String): String {
+        return "get${upperFirst(propertyName)}"
+    }
+
     fun asConstName(string: String): String {
         return camelCaseRegex.split(string)
                 .map { it.toUpperCase() }
@@ -241,10 +245,24 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 .addField(FieldSpec.builder(dtoClassName, "prototype", Modifier.PRIVATE, Modifier.FINAL).initializer("new \$T()", dtoClassName).build())
                 .addMethod(makeBuildMethod(dtoClassName))
 
-        val toStringPattern = codeSpec.toString
-                ?: codeSpec.properties.joinToString(prefix = "${codeSpec.name} {", separator = ", ", postfix = "}") { "${it.name}=\$${it.name}" }
 
-        dtoClassBuilder.addMethod(makeToString(codeSpec, toStringPattern))
+
+        if (codeSpec.toString.enable) {
+            val toStringPattern = codeSpec.toString.pattern
+                    ?: codeSpec.properties.joinToString(prefix = "${codeSpec.name} {", separator = ", ", postfix = "}") { "${it.name}=\$${it.name}" }
+            dtoClassBuilder.addMethod(makeToString(codeSpec, toStringPattern))
+        }
+
+        if (codeSpec.hashCode.enable) {
+            val fields = codeSpec.hashCode.fields ?: codeSpec.properties.map { it.name }
+            dtoClassBuilder.addMethod(makeHashCode(codeSpec, fields))
+        }
+
+        if (codeSpec.equals.enable) {
+            val fields = codeSpec.equals.fields ?: codeSpec.properties.map { it.name }
+            dtoClassBuilder.addMethod(makeEquals(codeSpec, fields))
+        }
+
 
         codeSpec.properties.forEach { builderClassBuilder.addMethod(makeBuilderSetMethod(builderClassName, it.name, asType(it.type))) }
 
@@ -268,5 +286,32 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         val javaFile = JavaFile.builder(codeSpec.packageName, mainInterfaceBuilder.build())
                 .build()
         javaFile.writeTo(context.project.generatedSourcePath)
+    }
+
+    private fun makeHashCode(codeSpec: DataClassSpec, fields: List<String>): MethodSpec {
+        val methodSpecBuilder = MethodSpec.methodBuilder("hashCode")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override::class.java)
+                .returns(TypeName.INT)
+        methodSpecBuilder.addCode("return Objects.hash(${fields.joinToString(separator = ", ")});\n");
+        return methodSpecBuilder.build()
+    }
+
+    private fun makeEquals(codeSpec: DataClassSpec, fields: List<String>): MethodSpec {
+        val myType = ClassName.get(codeSpec.packageName, codeSpec.name)
+        val methodSpecBuilder = MethodSpec.methodBuilder("equals")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override::class.java)
+                .addParameter(Object::class.java, "obj")
+                .returns(TypeName.BOOLEAN)
+        methodSpecBuilder.addCode("if (this == obj) return true;\n");
+        methodSpecBuilder.addCode("if (obj == null) return false;\n");
+        methodSpecBuilder.addCode("if (!(obj instanceof \$T)) return false;\n", myType)
+        methodSpecBuilder.addCode("$1T other = ($1T) obj;\n", myType)
+        fields.forEach {
+            methodSpecBuilder.addCode("if(!Objects.equals(\$L, \$L.\$L())) return false;\n", it, "other", asGetMethodName(it))
+        }
+        methodSpecBuilder.addCode("return true;\n")
+        return methodSpecBuilder.build()
     }
 }
