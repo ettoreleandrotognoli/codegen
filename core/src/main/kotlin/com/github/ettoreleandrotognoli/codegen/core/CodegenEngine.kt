@@ -11,9 +11,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.context.annotation.ComponentScan
 import java.io.File
-import java.io.FileInputStream
-import java.io.InputStream
-import java.util.stream.Stream
 
 @SpringBootApplication
 @ComponentScan("com.github.ettoreleandrotognoli.codegen")
@@ -24,31 +21,26 @@ open class CodegenEngine(
 ) {
 
     @ImplicitReflectionSerializer
-    fun processFile(context: CodegenContext, file: InputStream) {
-        val content = file.asString()
+    fun prepareSpecs(context: CodegenContext, file: File): List<CodegenSpec> {
+        val content = file.inputStream().asString()
         val specs = yaml.parse(CodegenSpec.serializer().list, content)
         val rawSpecs = snakeYaml.loadAll(content).toList().first() as List<Any>
         specs.zip(rawSpecs)
                 .forEach {
                     val rawSpec = snakeYaml.dump(it.second)
                     context.putRawSpec(it.first, rawSpec)
-                    codeGenerator.generate(context, it.first)
                 }
-
+        return specs
     }
 
+
     @ImplicitReflectionSerializer
-    fun process(project: Project, files: Stream<InputStream>) {
+    fun processFiles(project: Project, files: List<File>) {
         val context = CodegenContext(project)
-        files.forEach {
-            processFile(context, it)
-        }
-    }
-
-    @ImplicitReflectionSerializer
-    fun process(project: Project, files: List<File>) {
-        val filesStream = files.stream().map { FileInputStream(it) as InputStream }
-        process(project, filesStream)
+        val spec = files
+                .flatMap { prepareSpecs(context, it) }
+        spec.forEach { codeGenerator.preProcess(context, it) }
+        spec.forEach { codeGenerator.generate(context, it) }
     }
 
     companion object {

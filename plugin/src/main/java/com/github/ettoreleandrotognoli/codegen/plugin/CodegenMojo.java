@@ -16,6 +16,7 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Mojo(name = "codegen", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
@@ -42,19 +43,11 @@ public class CodegenMojo extends AbstractMojo {
         List<File> codegenFiles = Collections.singletonList(
                 new File(this.project.getBasedir(), this.codegenFiles)
         );
-        Stream<InputStream> input = codegenFiles.stream().map(file -> {
-            try {
-                return (InputStream) new FileInputStream(file);
-            } catch (FileNotFoundException ex) {
-                ex.printStackTrace();
-                return null;
-            }
-        }).filter(it -> it != null);
         Project project = new Project.DTO(
                 this.project.getBasedir(),
                 new File(this.project.getBasedir(),"target"),
                 outputDirectory
         );
-        CodegenEngine.Companion.getInstance().process(project, input);
+        CodegenEngine.Companion.getInstance().processFiles(project, codegenFiles);
     }
 }

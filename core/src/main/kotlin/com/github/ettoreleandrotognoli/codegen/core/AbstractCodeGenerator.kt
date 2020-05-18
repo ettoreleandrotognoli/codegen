@@ -13,6 +13,17 @@ abstract class AbstractCodeGenerator<T : CodeSpec>(
         return codeSpecType
     }
 
+    override fun preProcess(context: Context, codeSpec: T): List<Any> {
+        return emptyList()
+    }
+
+    override fun tryPreProcess(context: Context, codeSpec: CodeSpec): List<Any> {
+        if (!accept(codeSpec)) {
+            return emptyList()
+        }
+        return preProcess(context, codeSpec as T)
+    }
+
     override fun accept(codeSpec: CodeSpec): Boolean {
         return codeSpecType.isInstance(codeSpec)
     }

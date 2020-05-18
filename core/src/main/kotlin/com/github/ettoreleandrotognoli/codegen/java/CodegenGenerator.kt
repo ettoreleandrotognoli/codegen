@@ -1,7 +1,9 @@
 package com.github.ettoreleandrotognoli.codegen.java
 
 import com.charleskorn.kaml.Yaml
+import com.github.ettoreleandrotognoli.codegen.api.CodeGenerator
 import com.github.ettoreleandrotognoli.codegen.api.CodeGeneratorResolver
+import com.github.ettoreleandrotognoli.codegen.api.CodeSpec
 import com.github.ettoreleandrotognoli.codegen.api.CodeSpecClassResolver
 import com.github.ettoreleandrotognoli.codegen.core.CodegenContext
 import com.github.ettoreleandrotognoli.codegen.core.CodegenSpec
@@ -16,15 +18,26 @@ class CodegenGenerator(
         private val yaml: Yaml
 ) {
 
-
     @ImplicitReflectionSerializer
-    fun generate(context: CodegenContext, codeSpec: CodegenSpec) {
+    fun prepareGenerators(context: CodegenContext, codeSpec: CodegenSpec): List<Pair<CodeSpec, CodeGenerator<out CodeSpec>>> {
         val rawSpec = context.getRawSpec(codeSpec)
-        codeSpec.codegen
+        return codeSpec.codegen
                 .map { codeSpecClassResolver.resolve(it) }
                 .map { yaml.parse(it.serializer(), rawSpec) }
                 .also { it.forEach { codeSpec -> context.putRawSpec(codeSpec, rawSpec) } }
                 .flatMap { codeSpec -> codeGeneratorResolver.resolve(codeSpec::class).map { Pair(codeSpec, it) } }
+    }
+
+    @ImplicitReflectionSerializer
+    fun preProcess(context: CodegenContext, codeSpec: CodegenSpec) {
+        prepareGenerators(context, codeSpec)
+                .flatMap { it.second.tryPreProcess(context, it.first) }
+                .forEach(context::putReference)
+    }
+
+    @ImplicitReflectionSerializer
+    fun generate(context: CodegenContext, codeSpec: CodegenSpec) {
+        prepareGenerators(context, codeSpec)
                 .forEach {
                     it.second.tryGenerate(context, it.first)
                 }

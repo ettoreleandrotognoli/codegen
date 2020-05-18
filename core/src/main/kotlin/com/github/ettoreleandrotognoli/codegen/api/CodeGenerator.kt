@@ -8,6 +8,10 @@ interface CodeGenerator<T : CodeSpec> {
 
     fun accept(codeSpec: CodeSpec): Boolean
 
+    fun preProcess(context: Context, codeSpec: T): List<Any>
+
+    fun tryPreProcess(context: Context, codeSpec: CodeSpec): List<Any>
+
     fun generate(context: Context, codeSpec: T)
 
     fun tryGenerate(context: Context, codeSpec: CodeSpec)

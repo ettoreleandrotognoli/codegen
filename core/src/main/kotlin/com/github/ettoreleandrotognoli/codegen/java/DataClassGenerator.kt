@@ -13,6 +13,8 @@ import java.util.*
 import java.util.regex.Pattern
 import java.util.stream.Stream
 import javax.lang.model.element.Modifier
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 
 fun asType(rawType: String): TypeName {
@@ -85,13 +87,32 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
             val propertyType: Map<String, TypeName>,
             val propertySetMethodName: Map<String, String>,
             val propertyGetMethodName: Map<String, String>,
-            val observable: ProcessedObservableSpec?
+            val observable: ProcessedObservableSpec?,
+            val propertyDtoType: Map<String, TypeName> = emptyMap()
 
     ) {
         companion object {
 
 
-            fun from(rawSpec: DataClassSpec): ProcessedDataClassSpec {
+            fun from(rawSpec: DataClassSpec, context: Context? = null): ProcessedDataClassSpec {
+                val propertyType = rawSpec.properties
+                        .map { Pair(it.name, asType(it.type)) }
+                        .toMap()
+
+                val dtoType = (context?.getReference(ProcessedDataClassSpec::class) ?: emptyList())
+                        .groupBy { p -> p.type }
+                        .entries
+                        .map { Pair(it.key, it.value[0].dtoType) }
+                        .toMap(HashMap())
+
+                dtoType[TypeName.get(List::class.java)] = ClassName.get(ArrayList::class.java)
+                dtoType[TypeName.get(Map::class.java)] = ClassName.get(HashMap::class.java)
+
+                val propertyDtoType = propertyType
+                        .entries
+                        .map { Pair(it.key, (dtoType[it.value] ?: propertyType[it.key])!!) }
+                        .toMap()
+
                 return ProcessedDataClassSpec(
                         rawSpec = rawSpec,
                         type = ClassName.get(rawSpec.packageName, rawSpec.name),
@@ -102,16 +123,15 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                         extends = asType(rawSpec.extends),
                         implements = rawSpec.implements.map { asType(it) },
                         properties = rawSpec.properties.map { it.name },
-                        propertyType = rawSpec.properties
-                                .map { Pair(it.name, asType(it.type)) }
-                                .toMap(),
+                        propertyType = propertyType,
                         propertySetMethodName = rawSpec.properties
                                 .map { Pair(it.name, "set${it.name.upperFirst()}") }
                                 .toMap(),
                         propertyGetMethodName = rawSpec.properties
                                 .map { Pair(it.name, (if (isBooleanType(it.type)) ("is${it.name.upperFirst()}") else ("get${it.name.upperFirst()}"))) }
                                 .toMap(),
-                        observable = ProcessedObservableSpec.from(rawSpec.observable)
+                        observable = ProcessedObservableSpec.from(rawSpec.observable),
+                        propertyDtoType = propertyDtoType
                 )
             }
         }
@@ -229,12 +249,74 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                     }
         }
 
+        fun shallowCopyMethod(): MethodSpec.Builder {
+            return MethodSpec.methodBuilder("shallowCopy")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(type, "source")
+                    .returns(dtoType.fullName())
+                    .also {
+                        properties.forEach { p ->
+                            it.addCode("this.$1L = $2L.$3L();\n", p, "source", propertyGetMethodName[p])
+                        }
+                        it.addCode("return this;\n")
+                    }
+        }
+
+        fun deepCopyMethod(): MethodSpec.Builder {
+            return MethodSpec.methodBuilder("deepCopy")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(type, "source")
+                    .returns(dtoType.fullName())
+                    .also { method ->
+                        properties
+                                .forEach { p ->
+                                    val isPrimitive = propertyType[p]?.isPrimitive!!
+                                    if (!isPrimitive) {
+                                        method.addCode(
+                                                "this.$1L = new $2T($3L.$4L());\n",
+                                                p,
+                                                propertyDtoType[p],
+                                                "source",
+                                                propertyGetMethodName[p]
+                                        )
+
+                                    } else {
+                                        method.addCode(
+                                                "this.$1L = $2L.$3L();\n",
+                                                p,
+                                                "source",
+                                                propertyGetMethodName[p]
+                                        )
+                                    }
+                                }
+                        method.addCode("return this;\n")
+                    }
+        }
+
         fun cloneMethod(): MethodSpec.Builder {
             return MethodSpec.methodBuilder("clone")
                     .addModifiers(Modifier.PUBLIC)
                     .returns(dtoType.fullName())
                     .also {
                         it.addCode("return new $1T(this);\n", dtoType.fullName())
+                    }
+        }
+
+        fun shallowCloneMethod(): MethodSpec.Builder {
+            return MethodSpec.methodBuilder("shallowClone")
+                    .addModifiers(Modifier.PUBLIC)
+                    .returns(dtoType.fullName())
+                    .also {
+                        it.addCode("return new $1T().shallowCopy(this);\n", dtoType.fullName())
+                    }
+        }
+
+        fun deepCloneMethod(): MethodSpec.Builder {
+            return MethodSpec.methodBuilder("deepClone")
+                    .addModifiers(Modifier.PUBLIC)
+                    .returns(dtoType.fullName())
+                    .also {
+                        it.addCode("return new $1T().deepCopy(this);\n", dtoType.fullName())
                     }
         }
 
@@ -357,10 +439,13 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         mainInterfaceBuilder.addType(observableClassBuilder.build())
     }
 
+    override fun preProcess(context: Context, codeSpec: DataClassSpec): List<Any> {
+        return listOf(ProcessedDataClassSpec.from(codeSpec))
+    }
 
     override fun generate(context: Context, codeSpec: DataClassSpec) {
 
-        val spec = ProcessedDataClassSpec.from(codeSpec)
+        val spec = ProcessedDataClassSpec.from(codeSpec, context)
 
         val mutableInterfaceBuilder = TypeSpec.interfaceBuilder(spec.mutableType)
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
@@ -393,6 +478,14 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         dtoClassBuilder.addMethod(spec.copyMethod().build())
 
         dtoClassBuilder.addMethod(spec.cloneMethod().build())
+
+        dtoClassBuilder.addMethod(spec.shallowCopyMethod().build())
+
+        dtoClassBuilder.addMethod(spec.shallowCloneMethod().build())
+
+        dtoClassBuilder.addMethod(spec.deepCopyMethod().build())
+
+        dtoClassBuilder.addMethod(spec.deepCloneMethod().build())
 
         dtoClassBuilder.superclass(spec.extends)
 
@@ -456,7 +549,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override::class.java)
                 .returns(TypeName.INT)
-        methodSpecBuilder.addCode("return Objects.hash(${fields.joinToString(separator = ", ")});\n");
+        methodSpecBuilder.addCode("return \$T.hash(${fields.joinToString(separator = ", ")});\n", Objects::class.java);
         return methodSpecBuilder.build()
     }
 
@@ -471,7 +564,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         methodSpecBuilder.addCode("if (!(obj instanceof \$T)) return false;\n", codeSpec.type)
         methodSpecBuilder.addCode("$1T other = ($1T) obj;\n", codeSpec.type)
         fields.forEach {
-            methodSpecBuilder.addCode("if(!Objects.equals(\$L, \$L.\$L())) return false;\n", it, "other", codeSpec.propertyGetMethodName[it]!!)
+            methodSpecBuilder.addCode("if(!\$T.equals(\$L, \$L.\$L())) return false;\n", Objects::class.java, it, "other", codeSpec.propertyGetMethodName[it]!!)
         }
         methodSpecBuilder.addCode("return true;\n")
         return methodSpecBuilder.build()
