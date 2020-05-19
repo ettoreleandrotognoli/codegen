@@ -139,7 +139,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                         .groupBy { p -> p.type }
                         .entries
                         .filter { it.value[0].observable != null }
-                        .map { Pair(it.key, it.value[0].observableType.fullName()) }
+                        .map { Pair(it.key, it.value[0].observableType) }
                         .toMap(HashMap())
 
                 resolvedDtoTypes[COLLECTION_TYPE] = ClassName.get(LinkedList::class.java)
