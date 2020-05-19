@@ -222,9 +222,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
 
         fun copyConstructor(): MethodSpec.Builder {
             return copyConstructorSignature().also {
-                properties.forEach { p ->
-                    it.addCode("this.$1L = $2L.$3L();\n", p, "source", propertyGetMethodName[p])
-                }
+                it.addStatement("this.$1L($2L)", "copy", "source");
             }
         }
 
@@ -237,15 +235,13 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         }
 
         fun copyMethod(): MethodSpec.Builder {
+            val copyMethod = "${rawSpec.copy.default}Copy"
             return MethodSpec.methodBuilder("copy")
                     .addModifiers(Modifier.PUBLIC)
                     .addParameter(type, "source")
                     .returns(type)
                     .also {
-                        properties.forEach { p ->
-                            it.addCode("this.$1L = $2L.$3L();\n", p, "source", propertyGetMethodName[p])
-                        }
-                        it.addCode("return this;\n")
+                        it.addStatement("return this.$1L($2L)", copyMethod, "source")
                     }
         }
 

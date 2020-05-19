@@ -14,7 +14,8 @@ data class DataClassSpec(
         val implements: List<String> = Collections.emptyList(),
         val toString: ToStringSpec = ToStringSpec(),
         val equals: EqualsSpec = EqualsSpec(),
-        val hashCode: HashCodeSpec = HashCodeSpec()
+        val hashCode: HashCodeSpec = HashCodeSpec(),
+        val copy: CopySpec = CopySpec()
 ) : CodeSpec {
 
 }
