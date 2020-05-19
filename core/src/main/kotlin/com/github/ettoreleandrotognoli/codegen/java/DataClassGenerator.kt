@@ -279,7 +279,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                                     val isPrimitive = propertyType[p]?.isPrimitive!!
                                     if (!isPrimitive) {
                                         method.addCode(
-                                                "this.$1L = new $2T($3L.$4L());\n",
+                                                "this.$1L = $3L.$4L() == null ? null : new $2T($3L.$4L());\n",
                                                 p,
                                                 propertyDtoType[p],
                                                 "source",
