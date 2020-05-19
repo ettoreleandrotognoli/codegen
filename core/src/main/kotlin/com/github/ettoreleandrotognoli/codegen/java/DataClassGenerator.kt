@@ -15,6 +15,7 @@ import java.util.stream.Stream
 import javax.lang.model.element.Modifier
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
+import kotlin.collections.HashSet
 
 
 fun asType(rawType: String): TypeName {
@@ -105,12 +106,21 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                         .map { Pair(it.key, it.value[0].dtoType) }
                         .toMap(HashMap())
 
+                dtoType[TypeName.get(Collections::class.java)] = ClassName.get(LinkedList::class.java)
+                dtoType[TypeName.get(Set::class.java)] = ClassName.get(HashSet::class.java)
                 dtoType[TypeName.get(List::class.java)] = ClassName.get(ArrayList::class.java)
                 dtoType[TypeName.get(Map::class.java)] = ClassName.get(HashMap::class.java)
 
                 val propertyDtoType = propertyType
                         .entries
-                        .map { Pair(it.key, (dtoType[it.value] ?: propertyType[it.key])!!) }
+                        .map { entry ->
+                            val type = entry.value
+                            if (type is ParameterizedTypeName) {
+                                Pair(entry.key, (dtoType[type.rawType] ?: propertyType[entry.key])!!)
+                            } else {
+                                Pair(entry.key, (dtoType[entry.value] ?: propertyType[entry.key])!!)
+                            }
+                        }
                         .toMap()
 
                 return ProcessedDataClassSpec(

@@ -14,3 +14,5 @@
       type: "int"
     - name: "name"
       type: "com.github.ettoreleandrotognoli.example.Name"
+    - name: "contact"
+      type: "java.util.List<String>"
