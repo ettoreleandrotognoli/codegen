@@ -7,6 +7,7 @@ import com.github.ettoreleandrotognoli.codegen.data.ObservableSpec
 import com.github.ettoreleandrotognoli.codegen.upperFirst
 import com.squareup.javapoet.*
 import org.springframework.stereotype.Component
+import java.beans.PropertyChangeEvent
 import java.beans.PropertyChangeListener
 import java.beans.PropertyChangeSupport
 import java.util.*
@@ -89,6 +90,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
             val propertySetMethodName: Map<String, String>,
             val propertyGetMethodName: Map<String, String>,
             val observable: ProcessedObservableSpec?,
+            val observableProperties: List<String> = emptyList(),
             val propertyDtoType: Map<String, TypeName> = emptyMap(),
             val propertyObservableType: Map<String, TypeName> = emptyMap()
 
@@ -131,6 +133,11 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                         }
                         .toMap()
 
+                val observableProperties = propertyType
+                        .entries
+                        .filter { observableType.contains(it.value) }
+                        .map { it.key }
+
                 val propertyObservableType = propertyType
                         .entries
                         .map { entry ->
@@ -156,6 +163,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                                 .map { Pair(it.name, (if (isBooleanType(it.type)) ("is${it.name.upperFirst()}") else ("get${it.name.upperFirst()}"))) }
                                 .toMap(),
                         observable = ProcessedObservableSpec.from(rawSpec.observable),
+                        observableProperties = observableProperties,
                         propertyDtoType = propertyDtoType,
                         propertyObservableType = propertyObservableType
                 )
@@ -409,9 +417,9 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                         .also { method ->
                             codeSpec.properties.forEach {
                                 if (codeSpec.propertyObservableType[it]!!.isPrimitive) {
-                                    method.addStatement("this.$1L = $2L.$3L()", it, "source", codeSpec.propertyGetMethodName[it]!!)
+                                    method.addStatement("this.$1L($2L.$3L())", codeSpec.propertySetMethodName[it], "source", codeSpec.propertyGetMethodName[it]!!)
                                 } else {
-                                    method.addStatement("this.$1L = $3L.$4L() == null ? null : new $2T($3L.$4L())", it, codeSpec.propertyObservableType[it]!!, "source", codeSpec.propertyGetMethodName[it]!!)
+                                    method.addStatement("this.$1L($3L.$4L() == null ? null : new $2T($3L.$4L()))", codeSpec.propertySetMethodName[it], codeSpec.propertyObservableType[it]!!, "source", codeSpec.propertyGetMethodName[it]!!)
                                 }
                             }
                         }
@@ -424,6 +432,25 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         }
 
         observableClassBuilder.addField(FieldSpec.builder(PropertyChangeSupport::class.java, "propertyChangeSupport").addModifiers(Modifier.FINAL, Modifier.PRIVATE, Modifier.TRANSIENT).initializer("new PropertyChangeSupport(this)").build())
+
+        codeSpec.observableProperties.map {
+            FieldSpec.builder(PropertyChangeListener::class.java, "${it}Listener")
+                    .addModifiers(Modifier.PRIVATE, Modifier.FINAL, Modifier.TRANSIENT)
+                    .initializer("$1L",
+                            TypeSpec.anonymousClassBuilder("")
+                                    .addSuperinterface(PropertyChangeListener::class.java)
+                                    .addMethod(
+                                            MethodSpec.methodBuilder("propertyChange")
+                                                    .addModifiers(Modifier.PUBLIC)
+                                                    .addAnnotation(Override::class.java)
+                                                    .addParameter(PropertyChangeEvent::class.java, "event")
+                                                    .addStatement("$1L.firePropertyChange( $2L + $3S + event.getPropertyName() , event.getOldValue() , event.getNewValue() )", "propertyChangeSupport", "PROP_${asConstName(it)}", ".")
+                                                    .build()
+                                    )
+                                    .build()
+                    )
+                    .build()
+        }.forEach { observableClassBuilder.addField(it) }
 
         observableClassBuilder.addMethod(MethodSpec.methodBuilder("addPropertyChangeListener")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
@@ -467,10 +494,21 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
 
         codeSpec.properties
                 .map {
-                    buildConcreteSetMethod(it, codeSpec.propertyObservableType[it]!!)
-                            .addStatement("\$T \$L = this.\$L", codeSpec.propertyObservableType[it]!!, "old${upperFirst(it)}", it)
+                    val old = "old${upperFirst(it)}"
+                    val methodBuilder = buildConcreteSetMethod(it, codeSpec.propertyObservableType[it]!!)
+
+                    methodBuilder.addStatement("\$T \$L = this.\$L", codeSpec.propertyObservableType[it]!!, old, it)
                             .addStatement("this.\$L = \$L", it, it)
-                            .addCode("if(!\$T.equals(\$L,\$L)) this.propertyChangeSupport.firePropertyChange(\$L,\$L,\$L);\n", Objects::class.java, "old${upperFirst(it)}", it, "PROP_${asConstName(it)}", "old${upperFirst(it)}", it)
+                            .beginControlFlow("if(!\$T.equals(\$L,\$L))", Objects::class.java, old, it)
+
+                    if (codeSpec.observableProperties.contains(it))
+                        methodBuilder
+                                .addStatement("if ($1L != null) $1L.removePropertyChangeListener(this.$2L)", old, "${it}Listener")
+                                .addStatement("if ($1L != null) $1L.addPropertyChangeListener(this.$2L)", it, "${it}Listener")
+
+                    methodBuilder
+                            .addStatement("this.propertyChangeSupport.firePropertyChange(\$L,\$L,\$L)", "PROP_${asConstName(it)}", old, it)
+                            .endControlFlow()
                 }
                 .forEach { observableClassBuilder.addMethod(it.build()) }
 
