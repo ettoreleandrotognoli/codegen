@@ -21,7 +21,7 @@ class CodegenEngineTest {
         codegenEngine.processFiles(Project.DTO(
                 File("./"),
                 File("./target"),
-                File("./target/generated-sources/codegen")
+                File("./target/generated-test-sources/codegen")
         ), listOf(File(javaClass.classLoader.getResource("main.yml").file)))
     }
 }

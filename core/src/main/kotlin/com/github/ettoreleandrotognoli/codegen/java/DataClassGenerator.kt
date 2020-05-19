@@ -12,12 +12,31 @@ import java.beans.PropertyChangeListener
 import java.beans.PropertyChangeSupport
 import java.util.*
 import java.util.regex.Pattern
+import java.util.stream.Collectors
 import java.util.stream.Stream
 import javax.lang.model.element.Modifier
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 
+val OBSERVABLE_COLLECTIONS = ClassName.get("org.jdesktop.observablecollections", "ObservableCollections")
+
+val LIST_TYPE = ClassName.get(List::class.java)
+val SET_TYPE = ClassName.get(Set::class.java)
+val MAP_TYPE = ClassName.get(Map::class.java)
+val COLLECTION_TYPE = ClassName.get(Collection::class.java)
+
+val GENERIC_COLLECTIONS_TYPES = setOf(
+        LIST_TYPE,
+        SET_TYPE,
+        MAP_TYPE,
+        COLLECTION_TYPE
+)
+
+val OBSERVABLE_COLLECTIONS_MAP = mapOf(
+        LIST_TYPE to ClassName.get("org.jdesktop.observablecollections", "ObservableList"),
+        MAP_TYPE to ClassName.get("org.jdesktop.observablecollections", "ObservableMap")
+)
 
 fun asType(rawType: String): TypeName {
     if (rawType.contains("<")) {
@@ -91,9 +110,11 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
             val propertyGetMethodName: Map<String, String>,
             val observable: ProcessedObservableSpec?,
             val observableProperties: List<String> = emptyList(),
+            val collectionProperties: List<String>,
             val propertyDtoType: Map<String, TypeName> = emptyMap(),
-            val propertyObservableType: Map<String, TypeName> = emptyMap()
-
+            val propertyObservableType: Map<String, TypeName> = emptyMap(),
+            val resolvedDtoTypes: Map<TypeName, TypeName> = emptyMap(),
+            val resolvedObservableTypes: Map<TypeName, TypeName> = emptyMap()
     ) {
         companion object {
 
@@ -103,45 +124,56 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                         .map { Pair(it.name, asType(it.type)) }
                         .toMap()
 
-                val dtoType = (context?.getReference(ProcessedDataClassSpec::class) ?: emptyList())
+                val collectionProperties = propertyType
+                        .entries
+                        .filter { it.value is ParameterizedTypeName && GENERIC_COLLECTIONS_TYPES.contains((it.value as ParameterizedTypeName).rawType) }
+                        .map { it.key }
+
+                val resolvedDtoTypes = (context?.getReference(ProcessedDataClassSpec::class) ?: emptyList())
                         .groupBy { p -> p.type }
                         .entries
                         .map { Pair(it.key, it.value[0].dtoType) }
                         .toMap(HashMap())
 
-                val observableType = (context?.getReference(ProcessedDataClassSpec::class) ?: emptyList())
+                val resolvedObservableTypes = (context?.getReference(ProcessedDataClassSpec::class) ?: emptyList())
                         .groupBy { p -> p.type }
                         .entries
                         .filter { it.value[0].observable != null }
-                        .map { Pair(it.key, it.value[0].observableType) }
+                        .map { Pair(it.key, it.value[0].observableType.fullName()) }
                         .toMap(HashMap())
 
-                dtoType[TypeName.get(Collections::class.java)] = ClassName.get(LinkedList::class.java)
-                dtoType[TypeName.get(Set::class.java)] = ClassName.get(HashSet::class.java)
-                dtoType[TypeName.get(List::class.java)] = ClassName.get(ArrayList::class.java)
-                dtoType[TypeName.get(Map::class.java)] = ClassName.get(HashMap::class.java)
+                resolvedDtoTypes[COLLECTION_TYPE] = ClassName.get(LinkedList::class.java)
+                resolvedDtoTypes[SET_TYPE] = ClassName.get(HashSet::class.java)
+                resolvedDtoTypes[LIST_TYPE] = ClassName.get(ArrayList::class.java)
+                resolvedDtoTypes[MAP_TYPE] = ClassName.get(HashMap::class.java)
+
 
                 val propertyDtoType = propertyType
                         .entries
                         .map { entry ->
                             val type = entry.value
                             if (type is ParameterizedTypeName) {
-                                Pair(entry.key, (dtoType[type.rawType] ?: propertyType[entry.key])!!)
+                                Pair(entry.key, (resolvedDtoTypes[type.rawType] ?: propertyType[entry.key])!!)
                             } else {
-                                Pair(entry.key, (dtoType[entry.value] ?: propertyType[entry.key])!!)
+                                Pair(entry.key, (resolvedDtoTypes[entry.value] ?: propertyType[entry.key])!!)
                             }
                         }
                         .toMap()
 
                 val observableProperties = propertyType
                         .entries
-                        .filter { observableType.contains(it.value) }
+                        .filter { resolvedObservableTypes.contains(it.value) }
                         .map { it.key }
 
                 val propertyObservableType = propertyType
                         .entries
                         .map { entry ->
-                            Pair(entry.key, (observableType[entry.value] ?: propertyDtoType[entry.key])!!)
+                            val type = entry.value
+                            if (type is ParameterizedTypeName) {
+                                Pair(entry.key, ParameterizedTypeName.get(OBSERVABLE_COLLECTIONS_MAP.getOrDefault(type.rawType, type.rawType), *type.typeArguments.map { resolvedObservableTypes.getOrDefault(it, it) }.toTypedArray()))
+                            } else {
+                                Pair(entry.key, (resolvedObservableTypes[entry.value] ?: propertyDtoType[entry.key])!!)
+                            }
                         }
                         .toMap()
 
@@ -164,8 +196,12 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                                 .toMap(),
                         observable = ProcessedObservableSpec.from(rawSpec.observable),
                         observableProperties = observableProperties,
+                        collectionProperties = collectionProperties,
                         propertyDtoType = propertyDtoType,
-                        propertyObservableType = propertyObservableType
+                        propertyObservableType = propertyObservableType,
+                        resolvedDtoTypes = resolvedDtoTypes,
+                        resolvedObservableTypes = resolvedObservableTypes
+
                 )
             }
         }
@@ -300,23 +336,36 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                         properties
                                 .forEach { p ->
                                     val isPrimitive = propertyType[p]?.isPrimitive!!
-                                    if (!isPrimitive) {
-                                        method.addCode(
-                                                "this.$1L = $3L.$4L() == null ? null : new $2T($3L.$4L());\n",
+                                    if (isPrimitive) {
+                                        method.addStatement(
+                                                "this.$1L = $2L.$3L()",
+                                                p,
+                                                "source",
+                                                propertyGetMethodName[p]
+                                        )
+                                        return@forEach
+
+                                    }
+                                    if (!collectionProperties.contains(p)) {
+                                        method.addStatement(
+                                                "this.$1L = $3L.$4L() == null ? null : new $2T($3L.$4L())",
                                                 p,
                                                 propertyDtoType[p],
                                                 "source",
                                                 propertyGetMethodName[p]
                                         )
-
-                                    } else {
-                                        method.addCode(
-                                                "this.$1L = $2L.$3L();\n",
-                                                p,
-                                                "source",
-                                                propertyGetMethodName[p]
-                                        )
+                                        return@forEach
                                     }
+                                    val itemType = (propertyType[p] as ParameterizedTypeName).typeArguments[0]
+                                    method.addStatement(
+                                            "this.$1L = $3L.$4L() == null ? null : $3L.$4L().stream().map( it -> new $2T(it) ).collect($5T.$6L())",
+                                            p,
+                                            resolvedDtoTypes.getOrDefault(itemType, itemType),
+                                            "source",
+                                            propertyGetMethodName[p],
+                                            Collectors::class.java,
+                                            if ((propertyType[p] as ParameterizedTypeName).rawType == SET_TYPE) "toSet" else "toList"
+                                    )
                                 }
                         method.addCode("return this;\n")
                     }
@@ -418,9 +467,25 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                             codeSpec.properties.forEach {
                                 if (codeSpec.propertyObservableType[it]!!.isPrimitive) {
                                     method.addStatement("this.$1L($2L.$3L())", codeSpec.propertySetMethodName[it], "source", codeSpec.propertyGetMethodName[it]!!)
-                                } else {
-                                    method.addStatement("this.$1L($3L.$4L() == null ? null : new $2T($3L.$4L()))", codeSpec.propertySetMethodName[it], codeSpec.propertyObservableType[it]!!, "source", codeSpec.propertyGetMethodName[it]!!)
+                                    return@forEach
                                 }
+                                if (!codeSpec.collectionProperties.contains(it)) {
+                                    method.addStatement("this.$1L($3L.$4L() == null ? null : new $2T($3L.$4L()))", codeSpec.propertySetMethodName[it], codeSpec.propertyObservableType[it]!!, "source", codeSpec.propertyGetMethodName[it]!!)
+                                    return@forEach
+                                }
+                                val itemType = (codeSpec.propertyType[it] as ParameterizedTypeName).typeArguments[0]
+                                val resolvedDto = codeSpec.resolvedDtoTypes.getOrDefault(itemType, itemType)
+                                method.addStatement(
+                                        "this.$1L($3L.$4L() == null ? null : $2T.$5L($3L.$4L().stream().map( it -> new $8T(it) ).collect($6T.$7L())))",
+                                        codeSpec.propertySetMethodName[it],
+                                        OBSERVABLE_COLLECTIONS,
+                                        "source",
+                                        codeSpec.propertyGetMethodName[it]!!,
+                                        if ((codeSpec.propertyType[it] as ParameterizedTypeName).rawType == MAP_TYPE) "observableMap" else "observableList",
+                                        Collectors::class.java,
+                                        "toList",
+                                        codeSpec.resolvedObservableTypes.getOrDefault(itemType, resolvedDto)
+                                )
                             }
                         }
                         .build()
@@ -431,7 +496,11 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
             observableClassBuilder.addSuperinterface(it)
         }
 
-        observableClassBuilder.addField(FieldSpec.builder(PropertyChangeSupport::class.java, "propertyChangeSupport").addModifiers(Modifier.FINAL, Modifier.PRIVATE, Modifier.TRANSIENT).initializer("new PropertyChangeSupport(this)").build())
+        observableClassBuilder.addField(
+                FieldSpec.builder(PropertyChangeSupport::class.java, "propertyChangeSupport")
+                        .addModifiers(Modifier.FINAL, Modifier.PRIVATE, Modifier.TRANSIENT)
+                        .initializer("new PropertyChangeSupport(this)").build()
+        )
 
         codeSpec.observableProperties.map {
             FieldSpec.builder(PropertyChangeListener::class.java, "${it}Listener")
@@ -480,7 +549,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 .forEach { observableClassBuilder.addField(it.build()) }
 
         codeSpec.properties
-                .map { buildConcreteGetMethod(it, codeSpec.propertyObservableType[it]!!).addStatement("return this.$1L", it) }
+                .map { buildConcreteGetMethod(it, codeSpec.propertyType[it]!!).addStatement("return ($1T) ($2T) this.$3L", codeSpec.propertyType[it], Object::class.java, it) }
                 .forEach { observableClassBuilder.addMethod(it.build()) }
 
         codeSpec.properties
