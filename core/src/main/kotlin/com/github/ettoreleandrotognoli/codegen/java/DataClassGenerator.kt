@@ -89,7 +89,8 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
             val propertySetMethodName: Map<String, String>,
             val propertyGetMethodName: Map<String, String>,
             val observable: ProcessedObservableSpec?,
-            val propertyDtoType: Map<String, TypeName> = emptyMap()
+            val propertyDtoType: Map<String, TypeName> = emptyMap(),
+            val propertyObservableType: Map<String, TypeName> = emptyMap()
 
     ) {
         companion object {
@@ -106,6 +107,13 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                         .map { Pair(it.key, it.value[0].dtoType) }
                         .toMap(HashMap())
 
+                val observableType = (context?.getReference(ProcessedDataClassSpec::class) ?: emptyList())
+                        .groupBy { p -> p.type }
+                        .entries
+                        .filter { it.value[0].observable != null }
+                        .map { Pair(it.key, it.value[0].observableType) }
+                        .toMap(HashMap())
+
                 dtoType[TypeName.get(Collections::class.java)] = ClassName.get(LinkedList::class.java)
                 dtoType[TypeName.get(Set::class.java)] = ClassName.get(HashSet::class.java)
                 dtoType[TypeName.get(List::class.java)] = ClassName.get(ArrayList::class.java)
@@ -120,6 +128,13 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                             } else {
                                 Pair(entry.key, (dtoType[entry.value] ?: propertyType[entry.key])!!)
                             }
+                        }
+                        .toMap()
+
+                val propertyObservableType = propertyType
+                        .entries
+                        .map { entry ->
+                            Pair(entry.key, (observableType[entry.value] ?: propertyDtoType[entry.key])!!)
                         }
                         .toMap()
 
@@ -141,7 +156,8 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                                 .map { Pair(it.name, (if (isBooleanType(it.type)) ("is${it.name.upperFirst()}") else ("get${it.name.upperFirst()}"))) }
                                 .toMap(),
                         observable = ProcessedObservableSpec.from(rawSpec.observable),
-                        propertyDtoType = propertyDtoType
+                        propertyDtoType = propertyDtoType,
+                        propertyObservableType = propertyObservableType
                 )
             }
         }
@@ -177,7 +193,6 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
             return properties.stream().map {
                 MethodSpec.methodBuilder(propertySetMethodName[it])
                         .addModifiers(Modifier.PUBLIC)
-                        .addAnnotation(Override::class.java)
                         .addParameter(propertyType[it], it)
                         .addCode("this.$1L = $1L;\n", it)
             }
@@ -353,7 +368,6 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         return MethodSpec
                 .methodBuilder("set${upperFirst(propertyName)}")
                 .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(Override::class.java)
                 .addParameter(parameter)
     }
 
@@ -367,7 +381,9 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
     }
 
 
-    fun makeToString(codeSpec: DataClassSpec, pattern: String): MethodSpec {
+    fun makeToString(codeSpec: DataClassSpec): MethodSpec {
+        val pattern = codeSpec.toString.pattern
+                ?: codeSpec.properties.joinToString(prefix = "${codeSpec.name} {", separator = ", ", postfix = "}") { "${it.name}=\$${it.name}" }
         val methodSpecBuilder = MethodSpec.methodBuilder("toString")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override::class.java)
@@ -383,9 +399,24 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
     fun observableExtension(codeSpec: ProcessedDataClassSpec, observableSpec: ProcessedObservableSpec, mainInterfaceBuilder: TypeSpec.Builder) {
         val observableClassBuilder = TypeSpec.classBuilder("Observable")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addSuperinterface(codeSpec.mutableType.fullName())
-                .addField(FieldSpec.builder(codeSpec.mutableType.fullName(), "origin").addModifiers(Modifier.PRIVATE, Modifier.FINAL).build())
-                .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC).addParameter(codeSpec.mutableType.fullName(), "origin").addCode("this.$1N = $1N;", "origin").build())
+                .addSuperinterface(codeSpec.type)
+
+        observableClassBuilder.addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC).build())
+
+        observableClassBuilder.addMethod(
+                MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC)
+                        .addParameter(codeSpec.type, "source")
+                        .also { method ->
+                            codeSpec.properties.forEach {
+                                if (codeSpec.propertyObservableType[it]!!.isPrimitive) {
+                                    method.addStatement("this.$1L = $2L.$3L()", it, "source", codeSpec.propertyGetMethodName[it]!!)
+                                } else {
+                                    method.addStatement("this.$1L = new $2T($3L.$4L())", it, codeSpec.propertyObservableType[it]!!, "source", codeSpec.propertyGetMethodName[it]!!)
+                                }
+                            }
+                        }
+                        .build()
+        )
 
         observableClassBuilder.superclass(observableSpec.extends)
         observableSpec.implements.forEach {
@@ -422,25 +453,29 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                 .forEach { observableClassBuilder.addField(it.build()) }
 
         codeSpec.properties
-                .map { buildConcreteGetMethod(it, codeSpec.propertyType[it]!!).addCode("return this.$1L.$2L();", "origin", codeSpec.propertyGetMethodName[it]) }
+                .map { buildConcreteGetMethod(it, codeSpec.propertyObservableType[it]!!).addStatement("return this.$1L", it) }
                 .forEach { observableClassBuilder.addMethod(it.build()) }
 
         codeSpec.properties
                 .map {
-                    buildConcreteSetMethod(it, codeSpec.propertyType[it]!!)
-                            .addCode("\$T \$L = this.\$L.\$L();\n", codeSpec.propertyType[it]!!, "old${upperFirst(it)}", "origin", codeSpec.propertyGetMethodName[it]!!)
-                            .addCode("this.\$L.\$L(\$L);\n", "origin", codeSpec.propertySetMethodName[it]!!, it)
+                    FieldSpec
+                            .builder(codeSpec.propertyObservableType[it]!!, it)
+                            .addModifiers(Modifier.PRIVATE)
+                            .build()
+                }
+                .forEach { observableClassBuilder.addField(it) }
+
+        codeSpec.properties
+                .map {
+                    buildConcreteSetMethod(it, codeSpec.propertyObservableType[it]!!)
+                            .addStatement("\$T \$L = this.\$L", codeSpec.propertyObservableType[it]!!, "old${upperFirst(it)}", it)
+                            .addStatement("this.\$L = \$L", it, it)
                             .addCode("if(!\$T.equals(\$L,\$L)) this.propertyChangeSupport.firePropertyChange(\$L,\$L,\$L);\n", Objects::class.java, "old${upperFirst(it)}", it, "PROP_${asConstName(it)}", "old${upperFirst(it)}", it)
                 }
                 .forEach { observableClassBuilder.addMethod(it.build()) }
 
+        observableClassBuilder.addMethod(makeToString(codeSpec.rawSpec))
 
-        observableClassBuilder.addMethod(MethodSpec.methodBuilder("toString")
-                .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(Override::class.java)
-                .returns(String::class.java)
-                .addCode("return String.format(\$S,\$L.\$L());\n", "Observable( %s )", "origin", "toString")
-                .build())
 
         mainInterfaceBuilder.addType(observableClassBuilder.build())
     }
@@ -478,7 +513,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         }
 
         spec.concreteSetMethods().forEach {
-            dtoClassBuilder.addMethod(it.build())
+            dtoClassBuilder.addMethod(it.addAnnotation(Override::class.java).build())
         }
 
         dtoClassBuilder.addMethod(spec.copyMethod().build())
@@ -507,9 +542,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
         }
 
         if (codeSpec.toString.enable) {
-            val toStringPattern = codeSpec.toString.pattern
-                    ?: codeSpec.properties.joinToString(prefix = "${codeSpec.name} {", separator = ", ", postfix = "}") { "${it.name}=\$${it.name}" }
-            dtoClassBuilder.addMethod(makeToString(codeSpec, toStringPattern))
+            dtoClassBuilder.addMethod(makeToString(codeSpec))
         }
 
         if (codeSpec.hashCode.enable) {

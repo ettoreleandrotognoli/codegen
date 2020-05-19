@@ -5,6 +5,15 @@
   properties:
     - name: "value"
       type: "String"
+- name: "Fuu"
+  packageName: "com.github.ettoreleandrotognoli.example"
+  codegen:
+    - "DataClass"
+  properties:
+    - name: "value"
+      type: "String"
+  observable:
+    enable: true
 - name: "Person"
   packageName: "com.github.ettoreleandrotognoli.example"
   codegen:
@@ -16,3 +25,9 @@
       type: "com.github.ettoreleandrotognoli.example.Name"
     - name: "contact"
       type: "java.util.List<String>"
+    - name: "parent"
+      type: "com.github.ettoreleandrotognoli.example.Person"
+    - name: "fuu"
+      type: "com.github.ettoreleandrotognoli.example.Fuu"
+  observable:
+    enable: true
