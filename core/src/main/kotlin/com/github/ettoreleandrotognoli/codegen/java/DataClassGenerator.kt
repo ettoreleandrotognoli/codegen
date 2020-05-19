@@ -411,7 +411,7 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
                                 if (codeSpec.propertyObservableType[it]!!.isPrimitive) {
                                     method.addStatement("this.$1L = $2L.$3L()", it, "source", codeSpec.propertyGetMethodName[it]!!)
                                 } else {
-                                    method.addStatement("this.$1L = new $2T($3L.$4L())", it, codeSpec.propertyObservableType[it]!!, "source", codeSpec.propertyGetMethodName[it]!!)
+                                    method.addStatement("this.$1L = $3L.$4L() == null ? null : new $2T($3L.$4L())", it, codeSpec.propertyObservableType[it]!!, "source", codeSpec.propertyGetMethodName[it]!!)
                                 }
                             }
                         }
