@@ -685,6 +685,16 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassSpec>(DataClassSpec::c
             observableExtension(spec, spec.observable, mainInterfaceBuilder)
         }
 
+        if (spec.rawSpec.jackson != null) {
+            AnnotationSpec
+                    .builder(ClassName.bestGuess(spec.rawSpec.jackson.deserializeAnnotation))
+                    .addMember("as", "$1T.class", spec.dtoType.fullName())
+                    .build()
+                    .also {
+                        mainInterfaceBuilder.addAnnotation(it)
+                    }
+        }
+
         val javaFile = JavaFile.builder(codeSpec.packageName, mainInterfaceBuilder.build())
                 .build()
         javaFile.writeTo(context.project.generatedSourcePath)

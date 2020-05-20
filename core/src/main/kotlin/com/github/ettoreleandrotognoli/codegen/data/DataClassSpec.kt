@@ -15,7 +15,8 @@ data class DataClassSpec(
         val toString: ToStringSpec = ToStringSpec(),
         val equals: EqualsSpec = EqualsSpec(),
         val hashCode: HashCodeSpec = HashCodeSpec(),
-        val copy: CopySpec = CopySpec()
+        val copy: CopySpec = CopySpec(),
+        val jackson: JacksonSpec? = null
 ) : CodeSpec {
 
 }
