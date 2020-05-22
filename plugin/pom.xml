@@ -52,7 +52,7 @@
                     <executable>sed</executable>
                     <arguments>
                         <argument>-i</argument>
-                        <argument><![CDATA[/<groupId>${project.groupId}/<groupId>${project.groupId}.${parent.artifactId}/g]]></argument>
+                        <argument><![CDATA[s/<groupId>${project.groupId}/<groupId>${project.groupId}.${parent.artifactId}/g]]></argument>
                         <argument>${build.directory}/classes/META-INF/maven/plugin.xml</argument>
                     </arguments>
                 </configuration>
