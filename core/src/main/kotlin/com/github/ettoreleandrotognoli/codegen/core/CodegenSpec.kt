@@ -1,13 +1,13 @@
 package com.github.ettoreleandrotognoli.codegen.core
 
-import com.github.ettoreleandrotognoli.codegen.api.CodeSpec
+import com.github.ettoreleandrotognoli.codegen.api.RawCodeSpec
 import kotlinx.serialization.Serializable
 import java.util.*
 
 @Serializable
 class CodegenSpec(
         val codegen: List<String>
-) : CodeSpec {
+) : RawCodeSpec {
 
 
     override fun equals(other: Any?): Boolean {

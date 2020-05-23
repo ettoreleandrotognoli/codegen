@@ -2,9 +2,9 @@ package com.github.ettoreleandrotognoli.codegen
 
 import com.github.ettoreleandrotognoli.codegen.core.CodegenSpec
 import com.github.ettoreleandrotognoli.codegen.core.DefaultCodeGeneratorResolver
-import com.github.ettoreleandrotognoli.codegen.data.DataClassSpec
-import com.github.ettoreleandrotognoli.codegen.data.Property
-import com.github.ettoreleandrotognoli.codegen.java.DataClassGenerator
+import com.github.ettoreleandrotognoli.codegen.generator.data.DataClassRawSpec
+import com.github.ettoreleandrotognoli.codegen.generator.data.Property
+import com.github.ettoreleandrotognoli.codegen.generator.data.DataClassGenerator
 
 class Sample {
 
@@ -16,7 +16,7 @@ class Sample {
 
     class DataClass {
         companion object {
-            val EXAMPLE_NAME = DataClassSpec(
+            val EXAMPLE_NAME = DataClassRawSpec(
                     "Name",
                     "com.github.ettoreleandrotognoli.example",
                     listOf(
@@ -32,7 +32,7 @@ class Sample {
 
         companion object {
             val DEFAULT = DefaultCodeGeneratorResolver(mapOf(
-                    DataClassSpec::class to listOf(DataClassGenerator())
+                    DataClassRawSpec::class to listOf(DataClassGenerator())
             ))
         }
 

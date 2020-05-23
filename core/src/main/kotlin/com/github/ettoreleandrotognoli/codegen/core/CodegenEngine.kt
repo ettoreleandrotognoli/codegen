@@ -4,7 +4,8 @@ import com.charleskorn.kaml.Yaml
 import com.github.ettoreleandrotognoli.codegen.SnakeYaml
 import com.github.ettoreleandrotognoli.codegen.api.Project
 import com.github.ettoreleandrotognoli.codegen.asString
-import com.github.ettoreleandrotognoli.codegen.java.CodegenGenerator
+import com.github.ettoreleandrotognoli.codegen.generator.isNested
+import com.squareup.javapoet.JavaFile
 import kotlinx.serialization.ImplicitReflectionSerializer
 import kotlinx.serialization.builtins.list
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -28,7 +29,7 @@ open class CodegenEngine(
         specs.zip(rawSpecs)
                 .forEach {
                     val rawSpec = snakeYaml.dump(it.second)
-                    context.putRawSpec(it.first, rawSpec)
+                    context.registerRawSpec(it.first, rawSpec)
                 }
         return specs
     }
@@ -36,11 +37,17 @@ open class CodegenEngine(
 
     @ImplicitReflectionSerializer
     fun processFiles(project: Project, files: List<File>) {
-        val context = CodegenContext(project)
+        val context = CodegenContext()
         val spec = files
                 .flatMap { prepareSpecs(context, it) }
         spec.forEach { codeGenerator.preProcess(context, it) }
         spec.forEach { codeGenerator.generate(context, it) }
+        context.getAllTypeSpecBuilders()
+                .filter { !it.first.isNested() }
+                .map { JavaFile.builder(it.first.packageName(), it.second.build()).build() }
+                .forEach {
+                    it.writeTo(project.generatedSourcePath)
+                }
     }
 
     companion object {

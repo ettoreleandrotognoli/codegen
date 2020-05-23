@@ -1,30 +1,61 @@
 package com.github.ettoreleandrotognoli.codegen.core
 
-import com.github.ettoreleandrotognoli.codegen.api.CodeSpec
-import com.github.ettoreleandrotognoli.codegen.api.Context
-import com.github.ettoreleandrotognoli.codegen.api.Project
+import com.github.ettoreleandrotognoli.codegen.api.BuildContext
+import com.github.ettoreleandrotognoli.codegen.api.PreBuildContext
+import com.github.ettoreleandrotognoli.codegen.api.RawCodeSpec
+import com.squareup.javapoet.ClassName
+import com.squareup.javapoet.TypeName
+import com.squareup.javapoet.TypeSpec
+import java.util.*
+import java.util.stream.Stream
+import kotlin.collections.HashMap
 import kotlin.reflect.KClass
 
 class CodegenContext(
-        override val project: Project,
-        private val specs: MutableMap<CodeSpec, String> = HashMap(),
-        private val references: MutableMap<KClass<*>, MutableList<Any>> = HashMap()
-) : Context {
+        private val intentions: MutableList<ClassName> = LinkedList(),
+        private val rawSpec: MutableMap<RawCodeSpec, String> = HashMap(),
+        private val specs: MutableMap<KClass<*>, MutableSet<Any>> = HashMap(),
+        private val typeSpecBuilders: MutableMap<ClassName, TypeSpec.Builder> = HashMap()
+) : BuildContext.Mutable, PreBuildContext.Mutable {
 
-    override fun getRawSpec(codeSpec: CodeSpec): String {
-        return specs[codeSpec]!!
+    override fun getSpec(codeSpec: RawCodeSpec): String {
+        return rawSpec[codeSpec]!!
     }
 
-    fun putRawSpec(codeSpec: CodeSpec, rawSpec: String) {
-        specs[codeSpec] = rawSpec
+    fun registerRawSpec(codeSpec: RawCodeSpec, rawSpec: String) {
+        this.rawSpec[codeSpec] = rawSpec
     }
 
-    override fun <T : Any> getReference(type: KClass<T>): List<T> {
-        return references.getOrDefault(type, emptyList<T>()) as List<T>
+    override fun getIntentions(): List<ClassName> {
+        return intentions
     }
 
-    fun putReference(reference: Any) {
-        val references = this.references.getOrPut(reference::class, { mutableListOf() })
+    override fun registerIntention(type: ClassName) {
+        intentions.add(type)
+    }
+
+    override fun <T : Any> getSpec(type: KClass<T>): List<T> {
+        return specs.getOrDefault(type, emptySet<T>()).toList() as List<T>
+    }
+
+    override fun registerPreSpec(reference: Any) {
+        val references = this.specs.getOrPut(reference::class, { mutableSetOf() })
         references.add(reference)
+    }
+
+    override fun getTypeSpecBuilder(type: TypeName): Optional<TypeSpec.Builder> {
+        return Optional.ofNullable(typeSpecBuilders[type])
+    }
+
+    override fun registerTypeSpecBuilder(type: ClassName, builder: TypeSpec.Builder) {
+        typeSpecBuilders[type] = builder
+    }
+
+    override fun getAllTypeSpecBuilders(): Stream<Pair<ClassName, TypeSpec.Builder>> {
+        return typeSpecBuilders.entries.map { Pair(it.key, it.value) }.stream()
+    }
+
+    override fun registerFullSpec(spec: Any) {
+        registerPreSpec(spec)
     }
 }
