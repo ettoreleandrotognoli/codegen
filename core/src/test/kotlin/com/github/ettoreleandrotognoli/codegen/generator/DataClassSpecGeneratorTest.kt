@@ -1,7 +1,6 @@
 package com.github.ettoreleandrotognoli.codegen.generator
 
 import com.github.ettoreleandrotognoli.codegen.Sample
-import com.github.ettoreleandrotognoli.codegen.api.Project
 import com.github.ettoreleandrotognoli.codegen.core.CodegenContext
 import com.github.ettoreleandrotognoli.codegen.generator.data.DataClassGenerator
 import com.squareup.javapoet.ClassName
@@ -19,7 +18,6 @@ class DataClassSpecGeneratorTest {
 
     @Test
     fun `Should create a TypeSpec$Builder for the class`() {
-        val project = Project.DTO(basePath, File(basePath, "target"), File(basePath, "target/generated-sources/codegen"))
         val generator = DataClassGenerator()
         val context = CodegenContext()
         generator.generate(context, Sample.DataClass.EXAMPLE_NAME);
