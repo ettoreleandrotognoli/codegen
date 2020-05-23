@@ -5,9 +5,11 @@ import com.charleskorn.kaml.YamlConfiguration
 import com.github.ettoreleandrotognoli.codegen.SnakeYaml
 import com.github.ettoreleandrotognoli.codegen.api.CodeGenerator
 import com.github.ettoreleandrotognoli.codegen.api.CodeGeneratorResolver
-import com.github.ettoreleandrotognoli.codegen.api.CodeSpec
 import com.github.ettoreleandrotognoli.codegen.api.CodeSpecClassResolver
-import com.github.ettoreleandrotognoli.codegen.data.DataClassSpec
+import com.github.ettoreleandrotognoli.codegen.api.RawCodeSpec
+import com.github.ettoreleandrotognoli.codegen.generator.data.DataClassRawSpec
+import com.github.ettoreleandrotognoli.codegen.generator.entity.EntityRawSpec
+import com.github.ettoreleandrotognoli.codegen.generator.jdesktop.ObservableRawSpec
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.yaml.snakeyaml.DumperOptions
@@ -32,15 +34,16 @@ open class Config {
     @Bean
     open fun codeSpecClassResolver(): CodeSpecClassResolver {
         val aliases = mapOf(
-                "DataClass" to DataClassSpec::class,
-                "Codegen" to CodegenSpec::class
+                "DataClass" to DataClassRawSpec::class,
+                "Observable" to ObservableRawSpec::class,
+                "Entity" to EntityRawSpec::class
         )
         return DefaultCodeSpecClassResolver(aliases)
     }
 
     @Bean
     open fun codeGeneratorResolver(generators: List<CodeGenerator<*>>): CodeGeneratorResolver {
-        val generatorsMap = HashMap<KClass<out CodeSpec>, MutableList<CodeGenerator<*>>>()
+        val generatorsMap = HashMap<KClass<out RawCodeSpec>, MutableList<CodeGenerator<*>>>()
         generators.forEach {
             val list = generatorsMap.getOrDefault(it.specType(), mutableListOf())
             list.add(it)

@@ -9,16 +9,19 @@
   packageName: "com.github.ettoreleandrotognoli.example"
   codegen:
     - "DataClass"
+    - "Observable"
   properties:
     - name: "value"
       type: "String"
-  observable:
-    enable: true
 - name: "Person"
   packageName: "com.github.ettoreleandrotognoli.example"
   codegen:
     - "DataClass"
+    - "Entity"
+    - "Observable"
   properties:
+    - name: "id"
+      type: "String"
     - name: "age"
       type: "int"
     - name: "name"
@@ -33,5 +36,3 @@
       type: "java.util.List<com.github.ettoreleandrotognoli.example.Person>"
     - name: "fuu"
       type: "com.github.ettoreleandrotognoli.example.Fuu"
-  observable:
-    enable: true

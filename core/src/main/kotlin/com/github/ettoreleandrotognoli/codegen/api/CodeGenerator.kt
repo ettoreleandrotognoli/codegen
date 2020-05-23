@@ -2,18 +2,15 @@ package com.github.ettoreleandrotognoli.codegen.api
 
 import kotlin.reflect.KClass
 
-interface CodeGenerator<T : CodeSpec> {
+interface CodeGenerator<T : RawCodeSpec> {
 
     fun specType(): KClass<T>
 
-    fun accept(codeSpec: CodeSpec): Boolean
+    fun accept(codeSpec: RawCodeSpec): Boolean
 
-    fun preProcess(context: Context, codeSpec: T): List<Any>
+    fun prepareContext(context: PreBuildContext.Mutable, codeSpec: RawCodeSpec)
 
-    fun tryPreProcess(context: Context, codeSpec: CodeSpec): List<Any>
+    fun generate(context: BuildContext.Mutable, codeSpec: RawCodeSpec)
 
-    fun generate(context: Context, codeSpec: T)
-
-    fun tryGenerate(context: Context, codeSpec: CodeSpec)
 
 }
