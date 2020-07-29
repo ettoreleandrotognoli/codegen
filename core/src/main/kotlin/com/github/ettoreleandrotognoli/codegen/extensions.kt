@@ -144,7 +144,7 @@ fun copyMethod(sourceType: TypeName, targetType: ClassName, default: String = "d
     return MethodSpec.methodBuilder("copy")
             .addModifiers(Modifier.PUBLIC)
             .addParameter(sourceType, "source")
-            .returns(targetType)
+            .returns(targetType.fullName())
             .also {
                 it.addStatement("return this.$1L($2L)", copyMethod, "source")
             }
