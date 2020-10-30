@@ -1,5 +1,7 @@
 package com.github.ettoreleandrotognoli.codegen
 
+import com.github.ettoreleandrotognoli.codegen.generator.data.LIST_TYPE
+import com.github.ettoreleandrotognoli.codegen.generator.data.MAP_TYPE
 import com.github.ettoreleandrotognoli.codegen.generator.data.SET_TYPE
 import com.github.ettoreleandrotognoli.codegen.generator.fullName
 import com.squareup.javapoet.*
@@ -200,16 +202,33 @@ fun deepCopyMethod(sourceType: TypeName, targetType: ClassName, properties: Map<
                                 )
                                 return@forEach
                             }
-                            val itemType = type.typeArguments[0]
-                            method.addStatement(
-                                    "this.$1L = $3L.$4L() == null ? null : $3L.$4L().stream().map( it -> new $2T(it) ).collect($5T.$6L())",
-                                    p.key,
-                                    concreteTypes.getOrDefault(itemType, itemType),
-                                    "source",
-                                    p.key.asGetMethod(p.value),
-                                    Collectors::class.java,
-                                    if (type.rawType == SET_TYPE) "toSet" else "toList"
-                            )
+
+                            if (type.rawType == SET_TYPE || type.rawType == LIST_TYPE) {
+                                val itemType = type.typeArguments[0]
+                                method.addStatement(
+                                        "this.$1L = $3L.$4L() == null ? null : $3L.$4L().stream().map( it -> new $2T(it) ).collect($5T.$6L())",
+                                        p.key,
+                                        concreteTypes.getOrDefault(itemType, itemType),
+                                        "source",
+                                        p.key.asGetMethod(p.value),
+                                        Collectors::class.java,
+                                        if (type.rawType == SET_TYPE) "toSet" else "toList"
+                                )
+                            }
+                            if (type.rawType == MAP_TYPE) {
+                                val keyType = type.typeArguments[0]
+                                val valueType = type.typeArguments[1]
+                                method.addStatement(
+                                        "this.$1L = $2L.$3L() == null ? null : $2L.$3L().entrySet().stream().collect($4T.$5L( it -> new $6T( it.getKey() ) , it -> new $7T( it.getValue() ) ))",
+                                        p.key,
+                                        "source",
+                                        p.key.asGetMethod(p.value),
+                                        Collectors::class.java,
+                                        "toMap",
+                                        concreteTypes.getOrDefault(keyType, keyType),
+                                        concreteTypes.getOrDefault(valueType, valueType)
+                                )
+                            }
                         }
                 method.addCode("return this;\n")
             }
