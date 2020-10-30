@@ -7,6 +7,7 @@ import com.github.ettoreleandrotognoli.codegen.api.CodeGenerator
 import com.github.ettoreleandrotognoli.codegen.api.CodeGeneratorResolver
 import com.github.ettoreleandrotognoli.codegen.api.CodeSpecClassResolver
 import com.github.ettoreleandrotognoli.codegen.api.RawCodeSpec
+import com.github.ettoreleandrotognoli.codegen.generator.builder.BuilderRawSpec
 import com.github.ettoreleandrotognoli.codegen.generator.data.DataClassRawSpec
 import com.github.ettoreleandrotognoli.codegen.generator.entity.EntityRawSpec
 import com.github.ettoreleandrotognoli.codegen.generator.jdesktop.ObservableRawSpec
@@ -36,7 +37,8 @@ open class Config {
         val aliases = mapOf(
                 "DataClass" to DataClassRawSpec::class,
                 "Observable" to ObservableRawSpec::class,
-                "Entity" to EntityRawSpec::class
+                "Entity" to EntityRawSpec::class,
+                "Builder" to BuilderRawSpec::class
         )
         return DefaultCodeSpecClassResolver(aliases)
     }

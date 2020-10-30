@@ -2,9 +2,16 @@
   packageName: "com.github.ettoreleandrotognoli.example"
   codegen:
     - "DataClass"
+    - "Builder"
   properties:
     - name: "value"
       type: "String"
+    - name: "properties"
+      type: "java.util.Map<String,String>"
+    - name: "aliases"
+      type: "java.util.List<String>"
+    - name: "tags"
+      type: "java.util.Set<String>"
 - name: "Fuu"
   packageName: "com.github.ettoreleandrotognoli.example"
   codegen:

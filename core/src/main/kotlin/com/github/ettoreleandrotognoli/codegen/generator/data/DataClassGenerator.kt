@@ -89,17 +89,6 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassRawSpec>(DataClassRawS
 
         dtoClassBuilder.superclass(spec.extends)
 
-        val builderClassBuilder = TypeSpec.classBuilder("Builder")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addField(FieldSpec.builder(spec.dtoType.fullName(), "prototype", Modifier.PRIVATE, Modifier.FINAL).initializer("new \$T()", spec.dtoType.fullName()).build())
-                .addMethod(spec.buildMethod().build())
-
-
-
-        spec.builderSetMethods().forEach {
-            builderClassBuilder.addMethod(it.build())
-        }
-
         if (rawSpec.toString.enable) {
             dtoClassBuilder.addMethod(makeToString(spec.dtoType, spec.propertyType, rawSpec.toString.pattern))
         }
@@ -116,14 +105,12 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassRawSpec>(DataClassRawS
 
         val mutableInterface = mutableInterfaceBuilder.build()
         val dtoClass = dtoClassBuilder.build()
-        val builderClass = builderClassBuilder.build()
 
         val mainInterfaceBuilder =
                 TypeSpec.interfaceBuilder(rawSpec.name)
                         .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                         .addType(mutableInterface)
                         .addType(dtoClass)
-                        .addType(builderClass)
 
         spec.implements.forEach {
             mainInterfaceBuilder.addSuperinterface(it)
