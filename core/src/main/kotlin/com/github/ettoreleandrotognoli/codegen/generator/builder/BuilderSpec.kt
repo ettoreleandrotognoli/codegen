@@ -27,7 +27,7 @@ class BuilderSpec(
             val type = when {
                 nestedInterface -> `for`.nestedClass("Builder")
                 rawSpec.builder.`for` != null -> ClassName.get(rawSpec.packageName, rawSpec.name)
-                else -> ClassName.get(rawSpec.packageName + "." + rawSpec.name.toLowerCase() + ".builder", "Builder")
+                else -> ClassName.get(rawSpec.packageName + "." + rawSpec.name!!.toLowerCase() + ".builder", "Builder")
             }
             val concreteType = type.nestedClass("Impl")
             val extends = asType(rawSpec.builder.extends);

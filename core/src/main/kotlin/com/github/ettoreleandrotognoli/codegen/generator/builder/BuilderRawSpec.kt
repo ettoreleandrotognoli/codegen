@@ -14,7 +14,7 @@ data class BuilderRawOptions(
 
 @Serializable
 class BuilderRawSpec(
-        val name: String,
-        val packageName: String,
+        val name: String? = null,
+        val packageName: String? = null,
         val builder: BuilderRawOptions = BuilderRawOptions()
 ) : RawCodeSpec

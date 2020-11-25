@@ -7,11 +7,9 @@
       type: "String"
     - name: "value"
       type: "Object"
-- name: "Builder"
-  packageName: "com.github.ettoreleandrotognoli.example.bean"
-  builder:
+- builder:
     for: "com.github.ettoreleandrotognoli.example.bean.Bean"
-    nested: false
+    nested: true
   codegen:
     - "Builder"
 - name: "Name"
