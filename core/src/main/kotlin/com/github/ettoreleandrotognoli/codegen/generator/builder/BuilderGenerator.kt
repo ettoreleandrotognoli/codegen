@@ -91,7 +91,7 @@ class BuilderGenerator : AbstractCodeGenerator<BuilderRawSpec>(BuilderRawSpec::c
 
         val builderInterfaceBuilder = TypeSpec.interfaceBuilder(spec.type)
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addMethod(buildMethodSignature(spec.of).build())
+                .addMethod(buildMethodSignature(spec.`for`).build())
                 .addSuperinterfaces(spec.implements)
 
         builderSetMethodsSignatures(spec.type, dataclass.propertyType)
@@ -108,15 +108,18 @@ class BuilderGenerator : AbstractCodeGenerator<BuilderRawSpec>(BuilderRawSpec::c
                 .map { it.addAnnotation(Override::class.java) }
                 .forEach { builderClassBuilder.addMethod(it.build()) }
 
-        val dataclassBuilder = context.getTypeSpecBuilder(spec.of).get()
+        val dataclassBuilder = context.getTypeSpecBuilder(spec.`for`).get()
 
         dataclassBuilder
                 .addMethod(builderFactoryMethod(spec.type.fullName(), spec.concreteType.fullName()).build())
 
+        builderInterfaceBuilder.addType(builderClassBuilder.build());
 
-        dataclassBuilder
-                .addType(builderInterfaceBuilder.build())
-                .addType(builderClassBuilder.build())
+        if (spec.nestedInterface) {
+            dataclassBuilder.addType(builderInterfaceBuilder.build())
+        } else {
+            context.registerTypeSpecBuilder(spec.type, builderInterfaceBuilder);
+        }
 
     }
 }

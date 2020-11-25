@@ -180,8 +180,8 @@ fun deepCopyMethod(sourceType: TypeName, targetType: ClassName, properties: Map<
                 properties
                         .forEach { p ->
                             val type = p.value
-                            val isPrimitive = type.isPrimitive
-                            if (isPrimitive) {
+                            val doNotClone = type.isPrimitive || type == (TypeName.OBJECT)
+                            if (doNotClone) {
                                 method.addStatement(
                                         "this.$1L = $2L.$3L()",
                                         p.key,

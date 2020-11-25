@@ -1,5 +1,23 @@
+- name: "Bean"
+  packageName: "com.github.ettoreleandrotognoli.example.bean"
+  codegen:
+    - "DataClass"
+  properties:
+    - name: "name"
+      type: "String"
+    - name: "value"
+      type: "Object"
+- name: "Builder"
+  packageName: "com.github.ettoreleandrotognoli.example.bean"
+  builder:
+    for: "com.github.ettoreleandrotognoli.example.bean.Bean"
+    nested: false
+  codegen:
+    - "Builder"
 - name: "Name"
   packageName: "com.github.ettoreleandrotognoli.example"
+  builder:
+    nested: false
   codegen:
     - "DataClass"
     - "Builder"

@@ -16,7 +16,7 @@ fun asType(rawType: String): TypeName {
                 .toTypedArray()
         return ParameterizedTypeName.get(baseType, *parameterizedTypes)
     }
-    val primitiveMap = listOf(
+    val baseTypes = listOf(
             ClassName.BOOLEAN,
             ClassName.BYTE,
             ClassName.CHAR,
@@ -27,6 +27,7 @@ fun asType(rawType: String): TypeName {
             ClassName.LONG,
             ClassName.SHORT
     )
-            .map { it.toString() to it }.toMap()
-    return primitiveMap.getOrElse(rawType, { ClassName.bestGuess(rawType) })
+            .map { it.toString() to it }.toMap().toMutableMap()
+    baseTypes["Object"] = ClassName.OBJECT
+    return baseTypes.getOrElse(rawType, { ClassName.bestGuess(rawType) })
 }
