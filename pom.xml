@@ -4,7 +4,7 @@
 
     <groupId>com.github.ettoreleandrotognoli</groupId>
     <artifactId>codegen</artifactId>
-    <version>master-SNAPSHOT</version>
+    <version>0.0.1-RC10</version>
     <packaging>pom</packaging>
 
     <properties>
