@@ -18,7 +18,8 @@ class EntitySpec(
         val primaryKey: List<String>,
         val dataclass: Optional<DataClassSpec> = Optional.empty(),
         val propertyTypes: Map<String, TypeName>,
-        val concreteTypes: Map<TypeName, TypeName>
+        val concreteTypes: Map<TypeName, TypeName>,
+        val name: String
 ) : BaseSpec(type) {
 
     companion object {
@@ -36,7 +37,8 @@ class EntitySpec(
                         implements = implements,
                         primaryKey = rawSpec.primaryKey,
                         propertyTypes = emptyMap(),
-                        concreteTypes = emptyMap()
+                        concreteTypes = emptyMap(),
+                        name = rawSpec.entity.name ?: rawSpec.name
                 )
             }
 
@@ -76,7 +78,8 @@ class EntitySpec(
                     dataclass = optionalDataclass,
                     primaryKey = rawSpec.primaryKey,
                     propertyTypes = propertyTypes,
-                    concreteTypes = entityTypes
+                    concreteTypes = entityTypes,
+                    name = rawSpec.entity.name ?: rawSpec.name
             )
         }
 

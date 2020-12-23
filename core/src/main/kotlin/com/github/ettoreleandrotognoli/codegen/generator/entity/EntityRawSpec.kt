@@ -8,7 +8,8 @@ import java.util.*
 @Serializable
 data class EntityRawOptions(
         val extends: String = "Object",
-        val implements: List<String> = Collections.emptyList()
+        val implements: List<String> = Collections.emptyList(),
+        val name: String? = null
 )
 
 

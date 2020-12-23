@@ -6,10 +6,12 @@ import com.github.ettoreleandrotognoli.codegen.api.PreBuildContext
 import com.github.ettoreleandrotognoli.codegen.core.AbstractCodeGenerator
 import com.github.ettoreleandrotognoli.codegen.generator.makeEquals
 import com.github.ettoreleandrotognoli.codegen.generator.makeHashCode
+import com.squareup.javapoet.AnnotationSpec
 import com.squareup.javapoet.FieldSpec
 import com.squareup.javapoet.TypeSpec
 import org.springframework.stereotype.Component
 import javax.lang.model.element.Modifier
+import javax.persistence.Entity
 
 @Component
 class EntityGenerator : AbstractCodeGenerator<EntityRawSpec>(EntityRawSpec::class) {
@@ -64,6 +66,14 @@ class EntityGenerator : AbstractCodeGenerator<EntityRawSpec>(EntityRawSpec::clas
                 .map { it.build() }
                 .forEach { entityClassBuilder.addMethod(it) }
 
+
+
+
+        val entityAnnotation = AnnotationSpec.builder(Entity::class.java)
+                .addMember("name", "\$S", spec.name)
+                .build()
+
+        entityClassBuilder.addAnnotation(entityAnnotation)
 
         entityClassBuilder.addMethod(makeHashCode(dataclass.rawSpec, spec.primaryKey))
 
