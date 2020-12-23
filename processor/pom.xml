@@ -5,7 +5,7 @@
     <parent>
         <artifactId>codegen</artifactId>
         <groupId>com.github.ettoreleandrotognoli</groupId>
-        <version>master-SNAPSHOT</version>
+        <version>0.0.1-RC11</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
