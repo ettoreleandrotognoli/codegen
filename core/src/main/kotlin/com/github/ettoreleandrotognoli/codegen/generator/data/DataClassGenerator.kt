@@ -4,6 +4,7 @@ import com.github.ettoreleandrotognoli.codegen.*
 import com.github.ettoreleandrotognoli.codegen.api.BuildContext
 import com.github.ettoreleandrotognoli.codegen.api.PreBuildContext
 import com.github.ettoreleandrotognoli.codegen.core.AbstractCodeGenerator
+import com.github.ettoreleandrotognoli.codegen.generator.entity.EntitySpec
 import com.github.ettoreleandrotognoli.codegen.generator.fullName
 import com.github.ettoreleandrotognoli.codegen.generator.makeEquals
 import com.github.ettoreleandrotognoli.codegen.generator.makeHashCode
@@ -120,11 +121,21 @@ class DataClassGenerator : AbstractCodeGenerator<DataClassRawSpec>(DataClassRawS
             mainInterfaceBuilder.addMethod(it.build())
         }
 
+        val entityType = context.getSpec(EntitySpec::class)
+                .firstOrNull { it.of == spec.type }
+                ?.type
+
+        val deserializeTypes = mapOf(
+                "DataClass" to spec.dtoType,
+                "Entity" to entityType
+        )
 
         if (spec.rawSpec.jackson != null) {
+            val deserializeAs = spec.rawSpec.jackson.deserializeAs;
+            val deserializeType = deserializeTypes[deserializeAs] ?: ClassName.bestGuess(deserializeAs)
             AnnotationSpec
                     .builder(ClassName.bestGuess(spec.rawSpec.jackson.deserializeAnnotation))
-                    .addMember("as", "$1T.class", spec.dtoType.fullName())
+                    .addMember("as", "$1T.class", deserializeType.fullName())
                     .build()
                     .also {
                         mainInterfaceBuilder.addAnnotation(it)

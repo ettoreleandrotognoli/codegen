@@ -36,12 +36,16 @@
   properties:
     - name: "value"
       type: "String"
+  jackson:
+    enable: true
 - name: "Person"
   packageName: "com.github.ettoreleandrotognoli.example"
   codegen:
     - "DataClass"
     - "Entity"
     - "Observable"
+  jackson:
+    deserializeAs: "Entity"
   properties:
     - name: "id"
       type: "String"
