@@ -3,12 +3,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <artifactId>codegen</artifactId>
-        <groupId>com.github.ettoreleandrotognoli</groupId>
+        <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+        <artifactId>parent</artifactId>
         <version>master-SNAPSHOT</version>
     </parent>
 
-    <artifactId>codegen-core</artifactId>
+    <artifactId>core</artifactId>
     <packaging>jar</packaging>
 
     <properties>
