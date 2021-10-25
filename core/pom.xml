@@ -33,6 +33,11 @@
 
     <dependencies>
 
+        <dependency>
+            <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+
         <!-- kotlin -->
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
