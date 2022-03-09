@@ -1,0 +1,12 @@
+- package: org.etto
+  output: target/generated-sources/codegen/
+- name: Person
+  codegen:
+    - DataClass
+  fields:
+    - name: name
+      type: String
+    - name: nickname
+      type: String
+    - name: email
+      type: Optional<String>

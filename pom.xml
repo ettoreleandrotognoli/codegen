@@ -4,26 +4,26 @@
 
     <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
     <artifactId>parent</artifactId>
-    <version>master-SNAPSHOT</version>
+    <version>0.0.0.SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <properties>
         <kotlin.version>1.3.72</kotlin.version>
-        <kotlin.serialization.version>0.20.0</kotlin.serialization.version>
-        <junit.version>5.4.2</junit.version>
+        <lombok.version>1.18.22</lombok.version>
+        <jackson.version>2.13.0</jackson.version>
+        <junit.version>5.8.1</junit.version>
         <assertj.version>3.9.1</assertj.version>
         <plugin.compiler.version>3.5.1</plugin.compiler.version>
         <plugin.surefire.version>2.22.1</plugin.surefire.version>
         <plugin.jacoco.version>0.8.2</plugin.jacoco.version>
-        <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <auto-service.version>1.0-rc6</auto-service.version>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
         <maven-plugin-annotations.version>3.6.0</maven-plugin-annotations.version>
+        <auto-service.version>1.0</auto-service.version>
     </properties>
 
-    <name>godegen</name>
+    <name>codegen</name>
     <description>Exploring code generation</description>
     <url>https://github.com/ettoreleandrotognoli/codegen</url>
 
@@ -48,11 +48,51 @@
     </scm>
 
     <modules>
-        <module>core</module>
-        <module>plugin</module>
-        <module>processor</module>
         <module>api</module>
+        <module>loader</module>
+        <module>codegen-data-plugin</module>
+        <module>example</module>
+        <module>maven</module>
     </modules>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>io.reactivex.rxjava3</groupId>
+            <artifactId>rxjava</artifactId>
+            <version>3.1.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
     <dependencyManagement>
         <dependencies>
@@ -61,13 +101,27 @@
 
             <dependency>
                 <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
-                <artifactId>core</artifactId>
+                <artifactId>api</artifactId>
                 <version>${project.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
-                <artifactId>api</artifactId>
+                <artifactId>codegen-data-plugin</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+                <artifactId>loader</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+                <artifactId>maven</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+                <artifactId>example</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -97,18 +151,22 @@
             <dependency>
                 <groupId>com.squareup</groupId>
                 <artifactId>javapoet</artifactId>
-                <version>1.12.1</version>
+                <version>1.13.0</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
             </dependency>
 
             <!-- processor libraries -->
 
             <dependency>
                 <groupId>com.google.auto.service</groupId>
-                <artifactId>auto-service</artifactId>
+                <artifactId>auto-service-annotations</artifactId>
                 <version>${auto-service.version}</version>
-                <optional>true</optional>
             </dependency>
-
 
             <!-- maven plugin libraries -->
 
@@ -130,36 +188,52 @@
                 <version>${maven-plugin-annotations.version}</version>
             </dependency>
 
+            <!-- jackson -->
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-yaml</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-jsr310</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-jdk8</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
 
             <!-- test libraries -->
 
             <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter-api</artifactId>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
                 <version>${junit.version}</version>
-                <scope>test</scope>
-            </dependency>
-
-
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter-params</artifactId>
-                <version>${junit.version}</version>
-                <scope>test</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter-engine</artifactId>
-                <version>${junit.version}</version>
-                <scope>test</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>com.nhaarman</groupId>
-                <artifactId>mockito-kotlin</artifactId>
-                <version>1.6.0</version>
-                <scope>test</scope>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
             <dependency>
@@ -172,4 +246,31 @@
         </dependencies>
     </dependencyManagement>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>com.google.auto.service</groupId>
+                            <artifactId>auto-service</artifactId>
+                            <version>${auto-service.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.2</version>
+            </plugin>
+        </plugins>
+    </build>
 </project>
