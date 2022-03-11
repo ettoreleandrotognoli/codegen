@@ -2,31 +2,48 @@ package com.github.ettoreleandrotognoli.codegen.api.impl;
 
 import com.github.ettoreleandrotognoli.codegen.api.Codegen;
 import com.github.ettoreleandrotognoli.codegen.api.Context;
+import com.github.ettoreleandrotognoli.codegen.api.Names;
+import com.github.ettoreleandrotognoli.codegen.api.TypeResolver;
 import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
+import com.squareup.javapoet.TypeSpec;
 import lombok.AllArgsConstructor;
 
 import java.io.File;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @AllArgsConstructor
 public class CodegenContext implements Context {
 
     private File baseDir;
-    private Map<String, TypeName> types;
+    private TypeResolver typeResolver;
+    private Map<String, Class<?>> factories;
+    private Map<ClassName, TypeSpec.Builder> builders;
     private List<Codegen> codegenList;
+    private Names name;
 
 
     public static class Builder implements Context.Builder {
         private File baseDir;
-        private Map<String, TypeName> types = new HashMap<>();
+        private Map<String, Class<?>> factories;
+        private Map<ClassName, TypeSpec.Builder> builders = new HashMap<>();
+        private TypeResolver typeResolver = TypeResolverImpl.createDefault();
         private List<Codegen> codegenList = new LinkedList<>();
 
-        public Builder(File baseDir) {
+        @Override
+        public void addType(String name, TypeName type) {
+            typeResolver.addType(name, type);
+        }
+
+        public Builder(File baseDir, Map<String, Class<?>> factories) {
             this.baseDir = baseDir;
+            this.factories = factories;
+        }
+
+        @Override
+        public void addBuilder(ClassName type, TypeSpec.Builder builder) {
+            builders.put(type, builder);
         }
 
         @Override
@@ -38,11 +55,24 @@ public class CodegenContext implements Context {
         public CodegenContext build() {
             return new CodegenContext(
                     baseDir,
-                    Collections.unmodifiableMap(types),
-                    Collections.unmodifiableList(codegenList)
+                    typeResolver,
+                    factories,
+                    new HashMap<>(builders),
+                    Collections.unmodifiableList(codegenList),
+                    new NameImpl()
             );
         }
 
+    }
+
+    @Override
+    public TypeSpec.Builder getBuilder(ClassName typeName) {
+        if (builders.containsKey(typeName)) {
+            return builders.get(typeName);
+        }
+        TypeSpec.Builder builder = TypeSpec.classBuilder(typeName.toString());
+        builders.put(typeName, builder);
+        return builder;
     }
 
     @Override
@@ -50,27 +80,31 @@ public class CodegenContext implements Context {
         return codegenList.stream();
     }
 
-    @Override
     public TypeName resolveType(String name) {
-        if(name.contains("<")) {
-            return resolveGenericType(name);
-        }
-        if (types.containsKey(name)) {
-            return types.get(name);
-        }
-        return ClassName.bestGuess(name);
-    }
-
-    public TypeName resolveGenericType(String name) {
-        String genericType = name.substring(0, name.indexOf("<"));
-        String[] typeParameters = name.substring(name.indexOf("<") + 1, name.lastIndexOf(">")).split(",");
-        TypeName[] typeNames = Arrays.stream(typeParameters).map(this::resolveType).collect(Collectors.toList()).toArray(TypeName[]::new);
-        ClassName className = ClassName.bestGuess(genericType);
-        return ParameterizedTypeName.get(className, typeNames);
+        return typeResolver.resolveType(name);
     }
 
     @Override
     public File resolveFile(String path) {
         return new File(baseDir, path);
+    }
+
+    @Override
+    public Stream<Map.Entry<ClassName, TypeSpec.Builder>> getBuilders() {
+        return builders.entrySet().stream();
+    }
+
+    public Names names() {
+        return name;
+    }
+
+    @Override
+    public TypeName defaultFactory(TypeName fieldType) {
+        String canonicalName = fieldType.toString();
+        canonicalName = canonicalName.contains("<") ? canonicalName.substring(0, canonicalName.indexOf("<")) : canonicalName;
+        if (factories.containsKey(canonicalName)) {
+            return ClassName.get(factories.get(canonicalName));
+        }
+        return fieldType;
     }
 }

@@ -4,7 +4,7 @@
 
     <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
     <artifactId>parent</artifactId>
-    <version>0.0.0.SNAPSHOT</version>
+    <version>0.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <properties>
@@ -49,10 +49,12 @@
 
     <modules>
         <module>api</module>
-        <module>loader</module>
+        <module>engine</module>
         <module>codegen-data-plugin</module>
         <module>example</module>
         <module>maven</module>
+        <module>observable-properties</module>
+        <module>observable-properties-plugin</module>
     </modules>
 
     <dependencies>
@@ -111,7 +113,17 @@
             </dependency>
             <dependency>
                 <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
-                <artifactId>loader</artifactId>
+                <artifactId>observable-properties</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+                <artifactId>observable-properties-plugin</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+                <artifactId>engine</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

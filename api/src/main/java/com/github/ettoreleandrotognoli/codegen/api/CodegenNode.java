@@ -4,7 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Data
 @NoArgsConstructor
@@ -12,7 +13,5 @@ import java.util.List;
 public class CodegenNode {
 
     private String name;
-    private List<String> codegen;
-    private String output;
-
+    private Map<String, Optional<Object>> codegen;
 }

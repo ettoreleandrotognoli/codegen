@@ -1,8 +1,16 @@
 - package: org.etto
-  output: target/generated-sources/codegen/
+- name: Contact
+  codegen:
+    DataClass:
+    ObservableProperties:
+  fields:
+    - name: type
+      type: String
 - name: Person
   codegen:
-    - DataClass
+    DataClass:
+    ObservableProperties:
+      interfaces: [ com.github.ettoreleandrotognoli.binding.Model ]
   fields:
     - name: name
       type: String
@@ -10,3 +18,10 @@
       type: String
     - name: email
       type: Optional<String>
+    - name: contacts
+      type: List<Contact>
+      factory: LinkedList
+    - name: labels
+      type: List<String>
+    - name: parent
+      type: Person

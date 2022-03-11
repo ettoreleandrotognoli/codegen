@@ -7,8 +7,6 @@ public class PersonTest {
 
     @Test
     void test() {
-        Person person = new Person.DTO().setName("ettore").setNickname("etto");
-        person.getName();
 
     }
 
