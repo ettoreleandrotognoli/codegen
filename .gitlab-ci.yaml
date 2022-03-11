@@ -1,0 +1,27 @@
+variables:
+  MAVEN_OPTS: "-Dhttps.protocols=TLSv1.2 -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Djava.awt.headless=true"
+
+image: maven:3.6.3-jdk-11
+
+cache:
+  paths:
+    - .m2/repository
+
+.verify: &verify
+  stage: test
+  script:
+    - 'mvn $MAVEN_CLI_OPTS verify'
+  except:
+    variables:
+      - $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+verify:jdk11:
+  <<: *verify
+
+deploy:jdk11:
+  stage: deploy
+  script:
+    - 'mvn $MAVEN_CLI_OPTS deploy -s ci_settings_xml'
+  only:
+    variables:
+      - $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
