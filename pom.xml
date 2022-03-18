@@ -52,9 +52,12 @@
         <module>engine</module>
         <module>codegen-data-plugin</module>
         <module>example</module>
-        <module>maven</module>
+        <module>codegen-maven-plugin</module>
         <module>observable-properties</module>
         <module>observable-properties-plugin</module>
+        <module>jackson-plugin</module>
+        <module>predicate</module>
+        <module>predicate-plugin</module>
     </modules>
 
     <dependencies>
@@ -123,12 +126,27 @@
             </dependency>
             <dependency>
                 <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+                <artifactId>predicate</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+                <artifactId>predicate-plugin</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+                <artifactId>jackson-plugin</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
                 <artifactId>engine</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
-                <artifactId>maven</artifactId>
+                <artifactId>codegen-maven-plugin</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

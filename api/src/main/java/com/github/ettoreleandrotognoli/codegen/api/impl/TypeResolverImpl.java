@@ -6,6 +6,7 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import lombok.AllArgsConstructor;
 
+import javax.lang.model.type.TypeMirror;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,7 +29,17 @@ public class TypeResolverImpl implements TypeResolver {
         if (aliases.containsKey(name)) {
             return aliases.get(name);
         }
-        return resolveClass(name);
+        try {
+            return resolveClass(name);
+        } catch (IllegalArgumentException illegalArgumentException) {
+            try {
+                return (TypeName) TypeName.class
+                        .getDeclaredField(name.toUpperCase())
+                        .get(null);
+            } catch (IllegalAccessException | NoSuchFieldException e) {
+                throw TypeResolveError.of(name);
+            }
+        }
     }
 
     public ClassName resolveClass(String name) throws TypeResolveError {

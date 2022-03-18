@@ -4,7 +4,6 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
-import java.io.File;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -23,8 +22,6 @@ public interface Context {
                 .filter(codegenType::isInstance)
                 .map(codegenType::cast);
     }
-
-    File resolveFile(String path);
 
     Stream<Map.Entry<ClassName, TypeSpec.Builder>> getBuilders();
 

@@ -12,10 +12,12 @@ import java.util.Optional;
 public class DataSpec implements Named {
 
     @Data
-    static class DataField implements Named {
+    public static class DataField implements Named {
         private String name;
         private String type;
         private Optional<String> factory = Optional.empty();
+        @JsonProperty("default")
+        private Optional<String> defaultValue = Optional.empty();
     }
 
     @Data

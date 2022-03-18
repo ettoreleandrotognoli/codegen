@@ -131,17 +131,19 @@ public class ObservablePropertiesCodegen implements Codegen {
                 );
             } else if (isMap(fieldType)) {
                 methodBuilder.addStatement(
-                        "$N.$N = $T.observableMap($N.$L())",
+                        "$N.$N = $T.ofNullable($N.$L()).map($T::observableMap).orElse(null)",
                         name.asLowerCamelCase(spec.getName()), fieldName,
-                        ObservableCollections.class,
-                        SOURCE, field.getMethod()
+                        Optional.class,
+                        SOURCE, field.getMethod(),
+                        ObservableCollections.class
                 );
             } else if (isList(fieldType)) {
                 methodBuilder.addStatement(
-                        "$N.$N = $T.observableList($N.$L())",
+                        "$N.$N = $T.ofNullable($N.$L()).map($T::observableList).orElse(null)",
                         name.asLowerCamelCase(spec.getName()), fieldName,
-                        ObservableCollections.class,
-                        SOURCE, field.getMethod()
+                        Optional.class,
+                        SOURCE, field.getMethod(),
+                        ObservableCollections.class
                 );
             } else {
                 methodBuilder.addStatement("$N.$N = $N.$L()", name.asLowerCamelCase(spec.getName()), fieldName, SOURCE, field.getMethod());
@@ -160,13 +162,6 @@ public class ObservablePropertiesCodegen implements Codegen {
     @Override
     public void generate(Context context) {
         TypeSpec.Builder baseInterfaceBuilder = context.getBuilder(baseInterface);
-        Names propNames = context.names().prefix("PROP");
-        for (ObservablePropertiesSpec.ObservableField field : spec.getFields()) {
-            FieldSpec.Builder fieldBuilder = FieldSpec.builder(String.class, propNames.asConst(field))
-                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL, Modifier.STATIC)
-                    .initializer("$S", field.getName());
-            baseInterfaceBuilder.addField(fieldBuilder.build());
-        }
         TypeSpec.Builder observable = TypeSpec.classBuilder("Observable")
                 .addModifiers(Modifier.STATIC, Modifier.PUBLIC)
                 .addSuperinterface(baseInterface.nestedClass("Mutable"))

@@ -1,14 +1,15 @@
 - package: org.etto
-- name: Contact
   codegen:
+    Predicate:
     DataClass:
     ObservableProperties:
+    Jackson:
+- name: Contact
   fields:
     - name: type
       type: String
 - name: Person
   codegen:
-    DataClass:
     ObservableProperties:
       interfaces: [ com.github.ettoreleandrotognoli.binding.Model ]
   fields:
@@ -18,6 +19,8 @@
       type: String
     - name: email
       type: Optional<String>
+    - name: preferredContact
+      type: Contact
     - name: contacts
       type: List<Contact>
       factory: LinkedList

@@ -11,7 +11,7 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>maven</artifactId>
+    <artifactId>codegen-maven-plugin</artifactId>
 
 
     <dependencies>
@@ -38,6 +38,24 @@
         <dependency>
             <groupId>org.apache.maven.plugin-tools</groupId>
             <artifactId>maven-plugin-annotations</artifactId>
+        </dependency>
+
+
+        <dependency>
+            <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+            <artifactId>codegen-data-plugin</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+            <artifactId>observable-properties-plugin</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+            <artifactId>jackson-plugin</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ettoreleandrotognoli.codegen</groupId>
+            <artifactId>predicate-plugin</artifactId>
         </dependency>
 
     </dependencies>

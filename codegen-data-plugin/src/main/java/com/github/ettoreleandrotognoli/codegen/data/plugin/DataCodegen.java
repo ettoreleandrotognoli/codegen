@@ -9,10 +9,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import javax.lang.model.element.Modifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -116,15 +113,19 @@ public class DataCodegen implements Codegen {
                     .anyMatch(fieldType::equals);
             if (hasAsImmutable) {
                 builder.addStatement(
-                        "$N.$N = $N.$N().asImmutable()",
-                        THIS, field.getName(), OTHER, names.asGetMethod(field)
+                        "$N.$N = $T.ofNullable($N.$N()).map($T::asImmutable).orElse(null)",
+                        THIS, field.getName(),
+                        Optional.class,
+                        OTHER, names.asGetMethod(field),
+                        fieldType
                 );
             } else if (isList(fieldType)) {
                 builder.addStatement(
-                        "$N.$N = $T.unmodifiableList($N.$N())",
+                        "$N.$N = $T.ofNullable($N.$N()).map($T::unmodifiableList).orElse(null)",
                         THIS, names.asFieldName(field),
-                        Collections.class,
-                        OTHER, names.asGetMethod(field)
+                        Optional.class,
+                        OTHER, names.asGetMethod(field),
+                        Collections.class
                 );
             } else if (isMap(fieldType)) {
                 builder.addStatement(
@@ -376,6 +377,13 @@ public class DataCodegen implements Codegen {
             TypeName fieldType = context.resolveType(field.getType());
             FieldSpec.Builder fieldBuilder = FieldSpec.builder(fieldType, field.getName())
                     .addModifiers(Modifier.PRIVATE);
+            field.getDefaultValue().ifPresent(value -> {
+                if (isString(fieldType)) {
+                    fieldBuilder.initializer("$S", value);
+                } else {
+                    fieldBuilder.initializer("$L", value);
+                }
+            });
             classBuilder.addField(fieldBuilder.build());
         }
         for (DataSpec.DataField field : getSpec().getFields()) {
@@ -387,7 +395,7 @@ public class DataCodegen implements Codegen {
                     .addAnnotation(Override.class)
                     .build();
             classBuilder.addMethod(setMethod);
-            MethodSpec replaceMethod = replaceMethod(context,field, dtoClass)
+            MethodSpec replaceMethod = replaceMethod(context, field, dtoClass)
                     .addAnnotation(Override.class)
                     .build();
             classBuilder.addMethod(replaceMethod);
@@ -455,7 +463,13 @@ public class DataCodegen implements Codegen {
         spec.getInterfaces().stream()
                 .map(context::resolveType)
                 .forEach(classBuilder::addSuperinterface);
-
+        Names propNames = context.names().prefix("PROP");
+        for (DataSpec.DataField field : getSpec().getFields()) {
+            FieldSpec.Builder fieldBuilder = FieldSpec.builder(String.class, propNames.asConst(field))
+                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL, Modifier.STATIC)
+                    .initializer("$S", field.getName());
+            classBuilder.addField(fieldBuilder.build());
+        }
         for (DataSpec.DataField field : spec.getFields()) {
             classBuilder.addMethod(getSignature(context, field).addModifiers(Modifier.ABSTRACT).build());
         }

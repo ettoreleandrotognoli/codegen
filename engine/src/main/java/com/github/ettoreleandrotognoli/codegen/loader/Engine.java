@@ -1,71 +1,47 @@
-package com.github.ettoreleandrotognoli.codegen;
+package com.github.ettoreleandrotognoli.codegen.loader;
 
 import com.github.ettoreleandrotognoli.codegen.api.Codegen;
 import com.github.ettoreleandrotognoli.codegen.api.Context;
 import com.github.ettoreleandrotognoli.codegen.api.impl.CodegenContext;
-import com.github.ettoreleandrotognoli.codegen.loader.CodegenReader;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.TypeSpec;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.SneakyThrows;
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.LifecyclePhase;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.maven.project.MavenProject;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-@Mojo(
-        name = "codegen",
-        defaultPhase = LifecyclePhase.GENERATE_SOURCES,
-        requiresDependencyCollection = ResolutionScope.TEST,
-        requiresDependencyResolution = ResolutionScope.TEST
+@AllArgsConstructor
+@Builder
+public class Engine implements Runnable {
 
-)
-public class CodegenMojo extends AbstractMojo {
 
-    @Parameter(defaultValue = "${project}", required = true, readonly = true)
-    private MavenProject project;
 
-    @Parameter(defaultValue = "src/main/codegen/")
-    private String sources;
 
-    @Parameter(defaultValue = "target/generated-sources/codegen/")
-    private String generatedSources;
-
-    @Parameter()
-    private Map<String, Class<?>> factories = null;
+    private Path sourcesPath;
+    private Path outputPath;
+    private Map<String, Class<?>> factories;
 
     @SneakyThrows
     @Override
-    public void execute() throws MojoExecutionException, MojoFailureException {
-        if (factories == null) {
-            factories = new HashMap<>();
-            factories.put(List.class.getCanonicalName(), ArrayList.class);
-            factories.put(Map.class.getCanonicalName(), HashMap.class);
-        }
-        Path sourcesPath = new File(project.getBasedir(), this.sources).toPath();
-        Path outputPath = new File(project.getBasedir(), this.generatedSources).toPath();
+    public void run() {
         List<Codegen> codegenList = new LinkedList<>();
-        project.addCompileSourceRoot(generatedSources);
         CodegenReader reader = CodegenReader.createDefault();
         for (Path file : Files.list(sourcesPath).collect(Collectors.toList())) {
             try (InputStream inputStream = new FileInputStream(file.toFile())) {
                 reader.read(inputStream).subscribe(codegenList::add);
             }
         }
-        Context.Builder contextBuilder = new CodegenContext.Builder(project.getBasedir(), factories);
+        Context.Builder contextBuilder = new CodegenContext.Builder(factories);
         for (Codegen codegen : codegenList) {
             contextBuilder.register(codegen);
         }
@@ -88,7 +64,5 @@ public class CodegenMojo extends AbstractMojo {
                         e.printStackTrace();
                     }
                 });
-
     }
-
 }

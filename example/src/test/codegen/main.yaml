@@ -1,0 +1,14 @@
+- package: org.etto
+  codegen:
+    Predicate:
+    DataClass:
+    ObservableProperties:
+    Jackson:
+- name: Article
+  fields:
+    - name: title
+      type: String
+    - name: summary
+      type: String
+    - name: content
+      type: String

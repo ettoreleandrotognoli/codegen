@@ -16,7 +16,6 @@ import java.util.stream.Stream;
 @AllArgsConstructor
 public class CodegenContext implements Context {
 
-    private File baseDir;
     private TypeResolver typeResolver;
     private Map<String, Class<?>> factories;
     private Map<ClassName, TypeSpec.Builder> builders;
@@ -25,7 +24,6 @@ public class CodegenContext implements Context {
 
 
     public static class Builder implements Context.Builder {
-        private File baseDir;
         private Map<String, Class<?>> factories;
         private Map<ClassName, TypeSpec.Builder> builders = new HashMap<>();
         private TypeResolver typeResolver = TypeResolverImpl.createDefault();
@@ -36,8 +34,7 @@ public class CodegenContext implements Context {
             typeResolver.addType(name, type);
         }
 
-        public Builder(File baseDir, Map<String, Class<?>> factories) {
-            this.baseDir = baseDir;
+        public Builder(Map<String, Class<?>> factories) {
             this.factories = factories;
         }
 
@@ -54,7 +51,6 @@ public class CodegenContext implements Context {
         @Override
         public CodegenContext build() {
             return new CodegenContext(
-                    baseDir,
                     typeResolver,
                     factories,
                     new HashMap<>(builders),
@@ -82,11 +78,6 @@ public class CodegenContext implements Context {
 
     public TypeName resolveType(String name) {
         return typeResolver.resolveType(name);
-    }
-
-    @Override
-    public File resolveFile(String path) {
-        return new File(baseDir, path);
     }
 
     @Override

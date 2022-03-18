@@ -37,6 +37,10 @@ public class Helper {
         return false;
     }
 
+    public static boolean isString(TypeName typeName) {
+        return ClassName.get(String.class).equals(typeName);
+    }
+
     public static boolean isStream(TypeName typeName) {
         return typeName.toString().startsWith(streamClass.toString());
     }
