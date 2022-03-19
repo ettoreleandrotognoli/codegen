@@ -94,10 +94,11 @@ public class DataCodegen implements Codegen {
                     .map(context::resolveType)
                     .orElse(fieldType);
             builder.addStatement(
-                    "$N.$N = new $T($N.$N())",
+                    "$N.$N = $T.ofNullable($N.$N()).map($T::new).orElse(null)",
                     THIS, names.asFieldName(field),
-                    factoryClass,
-                    OTHER, names.asGetMethod(field)
+                    Optional.class,
+                    OTHER, names.asGetMethod(field),
+                    factoryClass
             );
         }
         return builder;
