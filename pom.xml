@@ -8,6 +8,13 @@
     <packaging>pom</packaging>
 
     <properties>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <site.url>https://gitlab.com/ettoreleandrotognoli/codegen</site.url>
+        <maven-plugin-annotations.version>3.6.4</maven-plugin-annotations.version>
+
         <kotlin.version>1.3.72</kotlin.version>
         <lombok.version>1.18.22</lombok.version>
         <jackson.version>2.13.0</jackson.version>
@@ -16,16 +23,16 @@
         <plugin.compiler.version>3.5.1</plugin.compiler.version>
         <plugin.surefire.version>2.22.1</plugin.surefire.version>
         <plugin.jacoco.version>0.8.2</plugin.jacoco.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-        <maven-plugin-annotations.version>3.6.0</maven-plugin-annotations.version>
         <auto-service.version>1.0</auto-service.version>
+
+        <skipSources>true</skipSources>
+        <skipJavadocs>true</skipJavadocs>
+
     </properties>
 
     <name>codegen</name>
     <description>Exploring code generation</description>
-    <url>https://github.com/ettoreleandrotognoli/codegen</url>
+    <url>${site.url}</url>
 
     <licenses>
         <license>
@@ -42,9 +49,9 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/ettoreleandrotognoli/codegen.git</connection>
-        <developerConnection>scm:git:ssh://github.com:ettoreleandrotognoli/codegen.git</developerConnection>
-        <url>https://github.com/ettoreleandrotognoli/codegen/tree/master</url>
+        <connection>scm:git:git://gitlab.com/ettoreleandrotognoli/codegen.git</connection>
+        <developerConnection>scm:git:ssh://gitlab.com:ettoreleandrotognoli/codegen.git</developerConnection>
+        <url>https://gitlab.com/ettoreleandrotognoli/codegen/tree/main</url>
     </scm>
 
     <modules>
@@ -288,7 +295,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.10.1</version>
                 <configuration>
                     <annotationProcessorPaths>
                         <path>
@@ -305,15 +312,75 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.22.2</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.2.1</version>
+                <configuration>
+                    <skipSource>${skipSources}</skipSource>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.3.2</version>
+                <configuration>
+                    <skip>${skipJavadocs}</skip>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>2.8.2</version>
+                <executions>
+                    <execution>
+                        <id>deploy</id>
+                        <phase>deploy</phase>
+                        <goals>
+                            <goal>deploy</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
 
     <profiles>
         <profile>
+            <id>release</id>
+            <properties>
+                <release>true</release>
+                <skipSources>false</skipSources>
+                <skipJavadocs>false</skipJavadocs>
+            </properties>
+        </profile>
+        <profile>
             <id>gitlab</id>
+            <properties>
+                <site.url>https://pages.gitlab.io/ettoreleandrotognoli/codegen</site.url>
+            </properties>
             <activation>
                 <property>
                     <name>env.GITLAB_CI</name>

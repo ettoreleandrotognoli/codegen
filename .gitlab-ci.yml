@@ -8,6 +8,15 @@ cache:
   paths:
     - .m2/repository
 
+.build: &build
+  stage: build
+  artifacts:
+    paths:
+      - "target/*"
+      - "*/target/*"
+  script:
+    - 'mvn -Prelease $MAVEN_CLI_OPTS package'
+
 .verify: &verify
   stage: test
   script:
@@ -16,6 +25,9 @@ cache:
     variables:
       - $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+build:jdk11:
+  <<: *build
+
 verify:jdk11:
   <<: *verify
 
@@ -23,6 +35,22 @@ deploy:jdk11:
   stage: deploy
   script:
     - 'mvn $MAVEN_CLI_OPTS deploy -s ${CI_SETTINGS_XML}'
+  only:
+    variables:
+      - $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+
+pages:
+  stage: deploy
+  artifacts:
+    paths:
+      - public
+  script:
+    - |
+      for path in $(find . -iname "apidocs"); do
+        mkdir -p public/$(echo $path | sed s@/target/@/@)
+        cp -r $path/* public/$(echo $path | sed s@/target/@/@)
+      done
   only:
     variables:
       - $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
