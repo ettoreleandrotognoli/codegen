@@ -20,7 +20,7 @@ cache:
 .verify: &verify
   stage: test
   script:
-    - 'mvn $MAVEN_CLI_OPTS verify'
+    - 'mvn -Dmaven.main.skip $MAVEN_CLI_OPTS verify'
   except:
     variables:
       - $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -34,7 +34,7 @@ verify:jdk11:
 deploy:jdk11:
   stage: deploy
   script:
-    - 'mvn $MAVEN_CLI_OPTS deploy -s ${CI_SETTINGS_XML}'
+    - 'mvn -Dmaven.main.skip $MAVEN_CLI_OPTS deploy -s ${CI_SETTINGS_XML}'
   only:
     variables:
       - $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
