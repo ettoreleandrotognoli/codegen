@@ -9,9 +9,6 @@
     - name: type
       type: String
 - name: Person
-  codegen:
-    ObservableProperties:
-      interfaces: [ com.github.ettoreleandrotognoli.binding.Model ]
   fields:
     - name: name
       type: String

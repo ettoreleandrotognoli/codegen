@@ -11,4 +11,6 @@ public interface FieldPredicateFactory<M, T> {
     Predicate<M> isNull();
 
     Predicate<M> isNotNull();
+
+    Predicate<M> matchesWith(Predicate<T> predicate);
 }

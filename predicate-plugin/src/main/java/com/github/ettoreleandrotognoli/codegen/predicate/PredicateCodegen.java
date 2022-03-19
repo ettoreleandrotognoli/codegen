@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
+import static com.github.ettoreleandrotognoli.codegen.api.Helper.isList;
 import static com.github.ettoreleandrotognoli.codegen.api.Helper.isString;
 
 @AllArgsConstructor
@@ -53,6 +54,7 @@ public class PredicateCodegen implements Codegen {
             return ParameterizedTypeName.get(predicateCodegen.get().getPredicateFactoryImpl(), genericType);
         }
         return isString(typeName) ? ParameterizedTypeName.get(ClassName.get(StringPredicateFactory.class), genericType)
+                : isList(typeName) ? ParameterizedTypeName.get(ClassName.get(ListPredicateFactory.class), genericType, ((ParameterizedTypeName)typeName).typeArguments.get(0))
                 : ClassName.get(DefaultFieldPredicateFactory.class);
     }
 
@@ -69,6 +71,7 @@ public class PredicateCodegen implements Codegen {
             return ParameterizedTypeName.get(predicateCodegen.get().getPredicateFactoryInterface(), baseInterface);
         }
         return isString(typeName) ? ParameterizedTypeName.get(ClassName.get(StringPredicateFactory.class), baseInterface)
+                : isList(typeName) ? ParameterizedTypeName.get(ClassName.get(ListPredicateFactory.class), baseInterface, ((ParameterizedTypeName)typeName).typeArguments.get(0))
                 : ParameterizedTypeName.get(ClassName.get(FieldPredicateFactory.class), baseInterface, typeName);
     }
 
@@ -76,13 +79,13 @@ public class PredicateCodegen implements Codegen {
         Optional<PredicateCodegen> predicateCodegen = context.getCodegen(PredicateCodegen.class)
                 .filter(it -> it.getBaseInterface().equals(typeName))
                 .findAny();
-        TypeVariableName typeVariableName = M;
         boolean hasPredicateCodegen = predicateCodegen.isPresent();
         if (hasPredicateCodegen) {
-            return ParameterizedTypeName.get(predicateCodegen.get().getPredicateFactoryInterface(), typeVariableName);
+            return ParameterizedTypeName.get(predicateCodegen.get().getPredicateFactoryInterface(), M);
         }
-        return isString(typeName) ? ParameterizedTypeName.get(ClassName.get(StringPredicateFactory.class), typeVariableName)
-                : ParameterizedTypeName.get(ClassName.get(FieldPredicateFactory.class), typeVariableName, typeName);
+        return isString(typeName) ? ParameterizedTypeName.get(ClassName.get(StringPredicateFactory.class), M)
+                : isList(typeName) ? ParameterizedTypeName.get(ClassName.get(ListPredicateFactory.class), M, ((ParameterizedTypeName)typeName).typeArguments.get(0))
+                : ParameterizedTypeName.get(ClassName.get(FieldPredicateFactory.class), M, typeName);
     }
 
     @Override

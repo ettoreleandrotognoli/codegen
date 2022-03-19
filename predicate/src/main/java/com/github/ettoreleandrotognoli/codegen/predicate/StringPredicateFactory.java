@@ -25,15 +25,22 @@ public class StringPredicateFactory<M> extends DefaultFieldPredicateFactory<M, S
         return new DefaultFieldPredicate<>(getField, it -> it.contains(content));
     }
 
-    public Predicate<M> isBlank(String content) {
+    public Predicate<M> isBlank() {
         return new DefaultFieldPredicate<>(getField, String::isBlank);
     }
 
-    public Predicate<M> isEmpty(String content) {
+    public Predicate<M> isEmpty() {
         return new DefaultFieldPredicate<>(getField, String::isEmpty);
     }
 
-    public NumberPredicateFactory<M> length(String content) {
-        return new NumberPredicateFactory<M>(nested("length"), getField.andThen(String::length));
+
+    public NumberPredicateFactory<M, Integer> length() {
+        return new NumberPredicateFactory<>(nested("length"), nested(String::length));
     }
+
+    public StringPredicateFactory<M> charAt(int index) {
+        String field = String.format("charAt(%d)", index);
+        return new StringPredicateFactory<M>(nested(field), nested(it -> it.substring(index, index +1)));
+    }
+
 }

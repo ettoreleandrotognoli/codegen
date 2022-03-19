@@ -4,6 +4,10 @@
     DataClass:
     ObservableProperties:
     Jackson:
+- name: Author
+  fields:
+    - name: name
+      type: String
 - name: Article
   fields:
     - name: title
@@ -12,3 +16,5 @@
       type: String
     - name: content
       type: String
+    - name: authors
+      type: List<Author>

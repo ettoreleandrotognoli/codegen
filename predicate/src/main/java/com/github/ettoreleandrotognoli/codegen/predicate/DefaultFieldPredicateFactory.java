@@ -45,7 +45,7 @@ public class DefaultFieldPredicateFactory<M, T> implements FieldPredicateFactory
 
     @Override
     public Predicate<M> equalsTo(T value) {
-        return new DefaultFieldPredicate<>(getField, predicateFactory.sameAs(value));
+        return new DefaultFieldPredicate<>(getField, predicateFactory.equalsTo(value));
     }
 
     @Override
@@ -59,5 +59,9 @@ public class DefaultFieldPredicateFactory<M, T> implements FieldPredicateFactory
     }
 
 
+    @Override
+    public Predicate<M> matchesWith(Predicate<T> predicate) {
+        return new DefaultFieldPredicate<>(getField, predicate);
+    }
 
 }
