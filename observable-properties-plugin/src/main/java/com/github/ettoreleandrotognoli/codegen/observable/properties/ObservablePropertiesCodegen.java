@@ -4,6 +4,7 @@ import com.github.ettoreleandrotognoli.codegen.api.Codegen;
 import com.github.ettoreleandrotognoli.codegen.api.Context;
 import com.github.ettoreleandrotognoli.codegen.api.Names;
 import com.github.ettoreleandrotognoli.codegen.data.plugin.DataCodegen;
+import com.github.ettoreleandrotognoli.codegen.data.plugin.DataSpec;
 import com.squareup.javapoet.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -153,7 +154,6 @@ public class ObservablePropertiesCodegen implements Codegen {
         return methodBuilder;
     }
 
-
     @Override
     public void prepare(Context.Builder builder) {
 
@@ -238,7 +238,10 @@ public class ObservablePropertiesCodegen implements Codegen {
         Optional<DataCodegen> dataCodegen = context.getCodegen(DataCodegen.class)
                 .filter( it -> it.getBaseInterface().equals(baseInterface))
                 .findAny();
-        dataCodegen.ifPresent(codegen -> observable.addMethod(codegen.toStringMethod(context, baseClass).build()));
+        dataCodegen.ifPresent(codegen -> {
+            observable.addMethod(codegen.toStringMethod(context, baseClass).build());
+            observable.addMethod(codegen.equalsMethod(context).build());
+        });
 
         baseInterfaceBuilder.addMethod(asSuperObservableMethod(context).build());
         baseInterfaceBuilder.addType(observable.build());

@@ -347,7 +347,7 @@ public class DataCodegen implements Codegen {
                     Objects.class, names.asGetMethod(field), name, names.asGetMethod(field)
             );
         }
-        methodBuilder.addStatement("return false");
+        methodBuilder.addStatement("return true");
         return methodBuilder;
     }
 
