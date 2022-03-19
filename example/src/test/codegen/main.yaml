@@ -8,6 +8,16 @@
   fields:
     - name: name
       type: String
+    - name: contacts
+      type: List<Contact>
+- name: Contact
+  fields:
+    - name: type
+      type: String
+    - name: value
+      type: String
+    - name: priority
+      type: long
 - name: Article
   fields:
     - name: title

@@ -4,10 +4,6 @@
     DataClass:
     ObservableProperties:
     Jackson:
-- name: Contact
-  fields:
-    - name: type
-      type: String
 - name: Person
   fields:
     - name: name
@@ -16,11 +12,6 @@
       type: String
     - name: email
       type: Optional<String>
-    - name: preferredContact
-      type: Contact
-    - name: contacts
-      type: List<Contact>
-      factory: LinkedList
     - name: labels
       type: List<String>
     - name: parent

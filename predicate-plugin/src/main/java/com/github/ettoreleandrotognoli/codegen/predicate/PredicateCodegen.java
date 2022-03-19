@@ -72,7 +72,7 @@ public class PredicateCodegen implements Codegen {
         }
         return isString(typeName) ? ParameterizedTypeName.get(ClassName.get(StringPredicateFactory.class), baseInterface)
                 : isList(typeName) ? ParameterizedTypeName.get(ClassName.get(ListPredicateFactory.class), baseInterface, ((ParameterizedTypeName)typeName).typeArguments.get(0))
-                : ParameterizedTypeName.get(ClassName.get(FieldPredicateFactory.class), baseInterface, typeName);
+                : ParameterizedTypeName.get(ClassName.get(FieldPredicateFactory.class), baseInterface, typeName.box());
     }
 
     public TypeName genericPredicateTypeFor(Context context, TypeName typeName) {
@@ -85,7 +85,7 @@ public class PredicateCodegen implements Codegen {
         }
         return isString(typeName) ? ParameterizedTypeName.get(ClassName.get(StringPredicateFactory.class), M)
                 : isList(typeName) ? ParameterizedTypeName.get(ClassName.get(ListPredicateFactory.class), M, ((ParameterizedTypeName)typeName).typeArguments.get(0))
-                : ParameterizedTypeName.get(ClassName.get(FieldPredicateFactory.class), M, typeName);
+                : ParameterizedTypeName.get(ClassName.get(FieldPredicateFactory.class), M, typeName.box());
     }
 
     @Override
@@ -110,8 +110,8 @@ public class PredicateCodegen implements Codegen {
                     .returns(returnType)
                     //.addStatement("throw new $T()", UnsupportedOperationException.class)
                     .addStatement(
-                            "$T<$T, $T> $N = $T::$N",
-                            Function.class, baseInterface, fieldType,
+                            "$T $N = $T::$N",
+                            ParameterizedTypeName.get(ClassName.get(Function.class), baseInterface, fieldType.box()),
                             names.asGetMethod(field),
                             baseInterface, names.asGetMethod(field)
                     )
