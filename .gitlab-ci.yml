@@ -34,7 +34,7 @@ verify:jdk11:
 deploy:jdk11:
   stage: deploy
   script:
-    - 'mvn -Prelease -Dmaven.main.skip $MAVEN_CLI_OPTS deploy -s ${CI_SETTINGS_XML}'
+    - 'mvn -Prelease -DskipTests -Dmaven.main.skip $MAVEN_CLI_OPTS deploy -s ${CI_SETTINGS_XML}'
   only:
     variables:
       - $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
