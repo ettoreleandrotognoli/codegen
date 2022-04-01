@@ -4,7 +4,6 @@ import com.github.ettoreleandrotognoli.codegen.api.Codegen;
 import com.github.ettoreleandrotognoli.codegen.api.Context;
 import com.github.ettoreleandrotognoli.codegen.api.Names;
 import com.github.ettoreleandrotognoli.codegen.data.plugin.DataCodegen;
-import com.github.ettoreleandrotognoli.codegen.data.plugin.DataSpec;
 import com.squareup.javapoet.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -38,8 +37,9 @@ public class ObservablePropertiesCodegen implements Codegen {
     }
 
     public MethodSpec.Builder getSignature(Context context, ObservablePropertiesSpec.ObservableField field) {
+        Names names = context.names();
         TypeName fieldType = context.resolveType(field.getType());
-        return MethodSpec.methodBuilder(field.getMethod())
+        return MethodSpec.methodBuilder(names.asGetMethod(field))
                 .addModifiers(Modifier.PUBLIC)
                 .returns(fieldType);
     }
@@ -51,8 +51,9 @@ public class ObservablePropertiesCodegen implements Codegen {
     }
 
     public MethodSpec.Builder setSignature(Context context, ObservablePropertiesSpec.ObservableField field) {
+        Names names = context.names();
         TypeName fieldType = context.resolveType(field.getType());
-        return MethodSpec.methodBuilder(field.setMethod())
+        return MethodSpec.methodBuilder(names.asSetMethod(field))
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(ParameterSpec.builder(fieldType, field.getName()).build())
                 .returns(TypeName.VOID);
@@ -89,7 +90,7 @@ public class ObservablePropertiesCodegen implements Codegen {
         Names names = context.names();
         return replaceSignature(context, field, returnType)
                 .addAnnotation(Override.class)
-                .addStatement("$N($N)", names.asSetMethod(field), names.asFieldName(field) )
+                .addStatement("$N($N)", names.asSetMethod(field), names.asFieldName(field))
                 .addStatement("return $N", THIS);
     }
 
@@ -127,7 +128,7 @@ public class ObservablePropertiesCodegen implements Codegen {
                         "$N.$N = $T.ofNullable($N.$L()).map($T::asObservable).orElse(null)",
                         name.asLowerCamelCase(spec.getName()), fieldName,
                         Optional.class,
-                        SOURCE, field.getMethod(),
+                        SOURCE, name.asGetMethod(field),
                         fieldType
                 );
             } else if (isMap(fieldType)) {
@@ -135,7 +136,7 @@ public class ObservablePropertiesCodegen implements Codegen {
                         "$N.$N = $T.ofNullable($N.$L()).map($T::observableMap).orElse(null)",
                         name.asLowerCamelCase(spec.getName()), fieldName,
                         Optional.class,
-                        SOURCE, field.getMethod(),
+                        SOURCE, name.asGetMethod(field),
                         ObservableCollections.class
                 );
             } else if (isList(fieldType)) {
@@ -143,11 +144,11 @@ public class ObservablePropertiesCodegen implements Codegen {
                         "$N.$N = $T.ofNullable($N.$L()).map($T::observableList).orElse(null)",
                         name.asLowerCamelCase(spec.getName()), fieldName,
                         Optional.class,
-                        SOURCE, field.getMethod(),
+                        SOURCE, name.asGetMethod(field),
                         ObservableCollections.class
                 );
             } else {
-                methodBuilder.addStatement("$N.$N = $N.$L()", name.asLowerCamelCase(spec.getName()), fieldName, SOURCE, field.getMethod());
+                methodBuilder.addStatement("$N.$N = $N.$L()", name.asLowerCamelCase(spec.getName()), fieldName, SOURCE, name.asGetMethod(field));
             }
         }
         methodBuilder.addStatement("return $N", name.asLowerCamelCase(spec.getName()));
@@ -182,6 +183,13 @@ public class ObservablePropertiesCodegen implements Codegen {
             TypeName fieldType = context.resolveType(field.getType());
             FieldSpec.Builder fieldBuilder = FieldSpec.builder(fieldType, field.getName())
                     .addModifiers(Modifier.PRIVATE);
+            field.getDefaultValue().ifPresent(value -> {
+                if (isString(fieldType)) {
+                    fieldBuilder.initializer("$S", value);
+                } else {
+                    fieldBuilder.initializer("$L", value);
+                }
+            });
             observable.addField(fieldBuilder.build());
         }
         for (ObservablePropertiesSpec.ObservableField field : spec.getFields()) {
@@ -236,7 +244,7 @@ public class ObservablePropertiesCodegen implements Codegen {
         observable.addMethod(ofMethod(context).build());
 
         Optional<DataCodegen> dataCodegen = context.getCodegen(DataCodegen.class)
-                .filter( it -> it.getBaseInterface().equals(baseInterface))
+                .filter(it -> it.getBaseInterface().equals(baseInterface))
                 .findAny();
         dataCodegen.ifPresent(codegen -> {
             observable.addMethod(codegen.toStringMethod(context, baseClass).build());

@@ -14,10 +14,8 @@ public class ObservablePropertiesSpec {
     static class ObservableField implements Named {
         private String name;
         private String type;
-
-        public String getMethod() {
-            return "get" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
-        }
+        @JsonProperty("default")
+        private Optional<String> defaultValue = Optional.empty();
 
         public String setMethod() {
             return "set" + Character.toUpperCase(name.charAt(0)) + name.substring(1);

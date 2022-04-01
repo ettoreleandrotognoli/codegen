@@ -15,7 +15,7 @@ cache:
       - "target/*"
       - "*/target/*"
   script:
-    - 'mvn -Prelease $MAVEN_CLI_OPTS package'
+    - 'mvn -Prelease $MAVEN_CLI_OPTS package javadoc:aggregate'
 
 .verify: &verify
   stage: test
